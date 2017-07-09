@@ -18,6 +18,7 @@ if(NOT NABTO_EXT_LIB)
 endif()
 
 add_executable (nabto-cli src/nabto_cli.cpp)
+target_compile_features(nabto-cli PRIVATE cxx_range_for)
 
 include_directories(include)
 target_link_libraries (nabto-cli ${NABTO_CORE_LIB} ${NABTO_EXT_LIB})
