@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include "nabto_client_api.h"
 #include "cxxopts.hpp"
 
@@ -9,10 +10,14 @@ void help(cxxopts::Options& options) {
 
 void die(const std::string& msg, int status=1) {
     std::cout << msg << std::endl;
+    nabtoShutdown();
     exit(status);
 }
 
-bool createCert(const std::string& commonName, const std::string& password) {
+////////////////////////////////////////////////////////////////////////////////
+// cert
+
+bool certCreate(const std::string& commonName, const std::string& password) {
     nabto_status_t res = nabtoCreateSelfSignedProfile(commonName.c_str(), password.c_str());
     if (res != NABTO_OK) {
         std::cout << "Failed to create self signed certificate " << res << std::endl;
@@ -33,21 +38,107 @@ bool createCert(const std::string& commonName, const std::string& password) {
     return true;
 }
 
+bool certList() {
+    char** certificates;
+    int certificatesLength;
+    nabto_status_t status;
+    
+    status = nabtoGetCertificates(&certificates, &certificatesLength);
+    if (status != NABTO_OK) {
+        fprintf(stderr, "nabtoGetCertificates failed: %d (%s)\n", (int) status, nabtoStatusStr(status));
+        return false;
+    }
+    
+    for (int i = 0; i < certificatesLength; i++) {
+        std::cout << certificates[i] << std::endl;
+    }
+
+    for (int i = 0; i < certificatesLength; i++) {
+        nabtoFree(certificates[i]);
+    }
+    nabtoFree(certificates);
+    return true;
+}
+
+bool certOpen(cxxopts::Options& options, nabto_handle_t& session) {
+    std::string cert = options["cert-name"].as<std::string>();
+    nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), options["password"].as<std::string>().c_str());
+    if (status == NABTO_OK) {
+        return true;
+    } else if (status == NABTO_OPEN_CERT_OR_PK_FAILED) {
+        std::cout << "No such certificate " << cert << std::endl;
+    } else if (status == NABTO_UNLOCK_PK_FAILED) {
+        std::cout << "Invalid password specified for " << cert << std::endl;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// rpc
+
+bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
+    std::string content;
+    bool ok = false;
+    
+    std::ifstream ifs(file.c_str(), std::ifstream::in);
+    if (ifs.good()) {
+        content = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+        ok = true;
+    } else {
+        ok = false;
+    }
+    ifs.close();
+    if (!ok) {
+        return false;
+    }
+    char* error;
+    nabto_status_t status = nabtoRpcSetDefaultInterface(session, content.c_str(), &error);
+    if (status == NABTO_FAILED_WITH_JSON_MESSAGE) {
+        std::cout << error << std::endl;
+        nabtoFree(error);
+    }
+    return status == NABTO_OK;
+}
+
+bool rpcInvoke(cxxopts::Options& options) {
+    nabto_handle_t session;
+    if (!certOpen(options, session)) {
+        return false;
+    }
+    if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
+        return false;
+    }
+    char* json;
+    nabto_status status = nabtoRpcInvoke(session, options["rpc-invoke-url"].as<std::string>().c_str(), &json);
+    if (status == NABTO_OK || status == NABTO_FAILED_WITH_JSON_MESSAGE) {
+        std::cout << json << std::endl;
+        nabtoFree(json);
+    } else {
+        std::cout << "RPC invocation failed with status " << status << std::endl;
+    }
+    return status == NABTO_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// main
+
 int main(int argc, char** argv) {
     try
     {
-        cxxopts::Options options(argv[0], " - example command line options");
+        cxxopts::Options options(argv[0], "Nabto Command Line demo");
         options.positional_help("[optional args]");
 
         bool apple = true;
 
         options.add_options()
+            ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
             ("c,create-cert", "Create self signed certificate")
             ("n,cert-name", "Certificate name", cxxopts::value<std::string>())
             ("a,password", "Password for private key", cxxopts::value<std::string>()->default_value("not-so-secret"))
-            ("q,rpc-invoke", "URL for RPC query")
-            ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition")
-            ("h,tunnel-host", "Nabto device id for tunnel")
+            ("basestation-auth-json", "JSON doc to path to basestation for authentication", cxxopts::value<std::string>())
+            ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
+            ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
+            ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
             ("l,tunnel-local-port", "TCP port that local nabto tunnel endpoint listens on", cxxopts::value<uint16_t>())
             ("r,tunnel-remote-port", "TCP port that remote nabto tunnel endpoint connects to", cxxopts::value<uint16_t>())
             ("tunnel-remote-host", "TCP host that remote nabto tunnel endpoint connects to", cxxopts::value<std::string>())
@@ -55,81 +146,74 @@ int main(int argc, char** argv) {
             ("install-resources", "Install necessary resources")
             ("discover", "Show Nabto devices ids discovered on local network")
             ("certs", "Show available certificates")
-            ("s,stun", "Show STUN analysis results")
             ("v,version", "Show version")
-            ("H,help", "Show help");
+            ("help", "Show help");
 
         options.parse(argc, argv);
 
         if (options.count("help")) {
             help(options);
-            die(0);
+            die("", 0);
         }
 
+        nabto_status_t st;
+        if (options.count("home-dir")) {
+            st = nabtoStartup(options["home-dir"].as<std::string>().c_str());
+        } else {
+            st = nabtoStartup(NULL);
+        }
+        if (st != NABTO_OK) {
+            die("Nabto startup failed");
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // certs 
+        
         if(options.count("create-cert")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!createCert(options["cert-name"].as<std::string>(), options["password"].as<std::string>())) {
+            if (certCreate(options["cert-name"].as<std::string>(), options["password"].as<std::string>())) {
+                exit(0);
+            } else {
                 die("Create cert failed");
             }
         }
         
-        if (apple)
-        {
-            std::cout << "Saw option ‘a’ " << options.count("a") << " times " <<
-                std::endl;
-        }
-
-        if (options.count("b"))
-        {
-            std::cout << "Saw option ‘b’" << std::endl;
-        }
-
-        if (options.count("f"))
-        {
-            auto& ff = options["f"].as<std::vector<std::string>>();
-            std::cout << "Files" << std::endl;
-            for (const auto& f : ff)
-            {
-                std::cout << f << std::endl;
+        if(options.count("certs")) {
+            if (certList()) {
+                exit(0);
+            } else {
+                die("list certs failed");
             }
         }
 
-        if (options.count("input"))
-        {
-            std::cout << "Input = " << options["input"].as<std::string>()
-                      << std::endl;
-        }
+        ////////////////////////////////////////////////////////////////////////////////
+        // rpc
 
-        if (options.count("output"))
-        {
-            std::cout << "Output = " << options["output"].as<std::string>()
-                      << std::endl;
-        }
-
-        if (options.count("positional"))
-        {
-            std::cout << "Positional = {";
-            auto& v = options["positional"].as<std::vector<std::string>>();
-            for (const auto& s : v) {
-                std::cout << s << ", ";
+        if (options.count("rpc-invoke-url")) {
+            if (!options.count("interface-definition")) {
+                die("Missing RPC interface definition");
             }
-            std::cout << "}" << std::endl;
+            if (!options.count("cert-name")) {
+                die("Missing cert-name parameter");
+            }
+            if (rpcInvoke(options)) {
+                nabtoShutdown();
+                exit(0);
+            } else {
+                die("RPC Invoke failed");
+            }
         }
 
-        if (options.count("int"))
-        {
-            std::cout << "int = " << options["int"].as<int>() << std::endl;
-        }
-
-        std::cout << "Arguments remain = " << argc << std::endl;
-
+        help(options);
+        
     } catch (const cxxopts::OptionException& e)
     {
         std::cout << "error parsing options: " << e.what() << std::endl;
         exit(1);
     }
+
 
     return 0;
 }
