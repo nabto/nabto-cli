@@ -14,6 +14,16 @@ void die(const std::string& msg, int status=1) {
     exit(status);
 }
 
+bool init(cxxopts::Options& options) {
+    nabto_status_t st;
+    if (options.count("home-dir")) {
+        st = nabtoStartup(options["home-dir"].as<std::string>().c_str());
+    } else {
+        st = nabtoStartup(NULL);
+    }
+    return st == NABTO_OK && nabtoInstallDefaultStaticResources(NULL) == NABTO_OK;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // cert
 
@@ -60,10 +70,20 @@ bool certList() {
     return true;
 }
 
-bool certOpen(cxxopts::Options& options, nabto_handle_t& session) {
-    std::string cert = options["cert-name"].as<std::string>();
-    nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), options["password"].as<std::string>().c_str());
+bool certOpenSession(cxxopts::Options& options, nabto_handle_t& session) {
+    const std::string& cert = options["cert-name"].as<std::string>();
+    const std::string& passwd = options["password"].as<std::string>();
+    nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), passwd.c_str());
     if (status == NABTO_OK) {
+        if (options.count("basestation-auth-json")) {
+            const std::string& json = options["basestation-auth-json"].as<std::string>();
+            if (nabtoSetBasestationAuthJson(session, json.c_str()) == NABTO_OK) {
+                return true;
+            } else {
+                std::cout << "Cert opened ok, but could not set basestation auth json doc" << std::endl;
+                return false;
+            }
+        }
         return true;
     } else if (status == NABTO_OPEN_CERT_OR_PK_FAILED) {
         std::cout << "No such certificate " << cert << std::endl;
@@ -102,7 +122,7 @@ bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
 
 bool rpcInvoke(cxxopts::Options& options) {
     nabto_handle_t session;
-    if (!certOpen(options, session)) {
+    if (!certOpenSession(options, session)) {
         return false;
     }
     if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
@@ -120,6 +140,42 @@ bool rpcInvoke(cxxopts::Options& options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// tunnel
+
+
+////////////////////////////////////////////////////////////////////////////////
+// show stuff
+
+bool showLocalDevices() {
+    char** devices;
+    int devicesLength;
+    nabto_status_t status;
+    
+    status = nabtoGetLocalDevices(&devices, &devicesLength);
+    if (status != NABTO_OK) {
+        return false;
+    }
+    
+    for(int i = 0; i < devicesLength; i++) {
+        std::cout << devices[i] << std::endl;
+    }
+
+    for (int i = 0; i < devicesLength; i++) {
+        nabtoFree(devices[i]);
+    }
+    nabtoFree(devices);
+    return true;
+}
+
+bool showVersion() {
+    char* version;
+    nabto_status_t status = nabtoVersionString(&version);
+    std::cout << version << std::endl;
+    nabtoFree(version);
+    return status == NABTO_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // main
 
 int main(int argc, char** argv) {
@@ -131,11 +187,10 @@ int main(int argc, char** argv) {
         bool apple = true;
 
         options.add_options()
-            ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
             ("c,create-cert", "Create self signed certificate")
             ("n,cert-name", "Certificate name", cxxopts::value<std::string>())
             ("a,password", "Password for private key", cxxopts::value<std::string>()->default_value("not-so-secret"))
-            ("basestation-auth-json", "JSON doc to path to basestation for authentication", cxxopts::value<std::string>())
+            ("basestation-auth-json", "JSON doc to pass to basestation for authentication", cxxopts::value<std::string>())
             ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
             ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
             ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
@@ -143,7 +198,7 @@ int main(int argc, char** argv) {
             ("r,tunnel-remote-port", "TCP port that remote nabto tunnel endpoint connects to", cxxopts::value<uint16_t>())
             ("tunnel-remote-host", "TCP host that remote nabto tunnel endpoint connects to", cxxopts::value<std::string>())
             ("t,tunnel-string", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
-            ("install-resources", "Install necessary resources")
+            ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
             ("discover", "Show Nabto devices ids discovered on local network")
             ("certs", "Show available certificates")
             ("v,version", "Show version")
@@ -151,21 +206,10 @@ int main(int argc, char** argv) {
 
         options.parse(argc, argv);
 
-        if (options.count("help")) {
-            help(options);
-            die("", 0);
+        if (!init(options)) {
+            die("Initialization failed");
         }
-
-        nabto_status_t st;
-        if (options.count("home-dir")) {
-            st = nabtoStartup(options["home-dir"].as<std::string>().c_str());
-        } else {
-            st = nabtoStartup(NULL);
-        }
-        if (st != NABTO_OK) {
-            die("Nabto startup failed");
-        }
-
+        
         ////////////////////////////////////////////////////////////////////////////////
         // certs 
         
@@ -205,6 +249,27 @@ int main(int argc, char** argv) {
                 die("RPC Invoke failed");
             }
         }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // show stuff
+
+        if (options.count("discover")) {
+            showLocalDevices();
+            exit(0);
+        }
+
+        if (options.count("version")) {
+            showVersion();
+            exit(0);
+        }
+
+        if (options.count("help")) {
+            help(options);
+            die("", 0);
+        }
+
+
+
 
         help(options);
         
