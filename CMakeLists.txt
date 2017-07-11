@@ -17,7 +17,7 @@ if(NOT NABTO_EXT_LIB)
   message(FATAL_ERROR "nabto external lib not found - please download and install as per the README file")
 endif()
 
-add_executable (nabto-cli src/nabto_cli.cpp)
+add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp)
 target_compile_features(nabto-cli PRIVATE cxx_range_for)
 
 include_directories(include)

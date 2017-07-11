@@ -1,8 +1,25 @@
-#include <vector>
 #include <iostream>
 #include <fstream>
-#include "nabto_client_api.h"
+
+#ifndef WIN32
+#include <signal.h>
+#endif
+
 #include "cxxopts.hpp"
+#include "nabto_client_api.h"
+#include "tunnel_manager.hpp"
+
+namespace nabtocli {
+
+static std::unique_ptr<TunnelManager> tunnelManager_;
+
+void sigHandler(int signo) {
+    if (signo == SIGINT) {
+        if (tunnelManager_) {
+            tunnelManager_->stop();
+        }
+    }
+}
 
 void help(cxxopts::Options& options) {
     std::cout << options.help({"", "Group"}) << std::endl;
@@ -21,6 +38,9 @@ bool init(cxxopts::Options& options) {
     } else {
         st = nabtoStartup(NULL);
     }
+#ifndef WIN32
+    signal(SIGINT, sigHandler);
+#endif
     return st == NABTO_OK && nabtoInstallDefaultStaticResources(NULL) == NABTO_OK;
 }
 
@@ -28,15 +48,15 @@ bool init(cxxopts::Options& options) {
 // cert
 
 bool certCreate(const std::string& commonName, const std::string& password) {
-    nabto_status_t res = nabtoCreateSelfSignedProfile(commonName.c_str(), password.c_str());
-    if (res != NABTO_OK) {
-        std::cout << "Failed to create self signed certificate " << res << std::endl;
+    nabto_status_t st = nabtoCreateSelfSignedProfile(commonName.c_str(), password.c_str());
+    if (st != NABTO_OK) {
+        std::cout << "Failed to create self signed certificate " << st << std::endl;
         return false;
     }
     char fingerprint[16];
-    res = nabtoGetFingerprint(commonName.c_str(), fingerprint);    
-    if (res != NABTO_OK) {
-        std::cout << "Failed to get fingerprint of self signed certificate " << res << std::endl;
+    st = nabtoGetFingerprint(commonName.c_str(), fingerprint);    
+    if (st != NABTO_OK) {
+        std::cout << "Failed to get fingerprint of self signed certificate " << st << std::endl;
         return false;
     }
     char fingerprintString[3*sizeof(fingerprint)];
@@ -70,7 +90,7 @@ bool certList() {
     return true;
 }
 
-bool certOpenSession(cxxopts::Options& options, nabto_handle_t& session) {
+bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
     const std::string& cert = options["cert-name"].as<std::string>();
     const std::string& passwd = options["password"].as<std::string>();
     nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), passwd.c_str());
@@ -122,7 +142,7 @@ bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
 
 bool rpcInvoke(cxxopts::Options& options) {
     nabto_handle_t session;
-    if (!certOpenSession(options, session)) {
+    if (!certOpenSession(session, options)) {
         return false;
     }
     if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
@@ -142,6 +162,27 @@ bool rpcInvoke(cxxopts::Options& options) {
 ////////////////////////////////////////////////////////////////////////////////
 // tunnel
 
+bool tunnelRunFromParams(cxxopts::Options& options) {
+    nabto_handle_t session;
+    if (!certOpenSession(session, options)) {
+        return false;
+    }
+    tunnelManager_.reset(new TunnelManager(session));
+
+    uint16_t localPort = options["tunnel-local-port"].as<uint16_t>();
+    const std::string& deviceId = options["tunnel-host"].as<std::string>();
+    uint16_t remotePort = options["tunnel-remote-port"].as<uint16_t>();
+    const std::string& remoteHost = options["tunnel-remote-host"].as<std::string>();
+
+    if (tunnelManager_->open(localPort, deviceId, remoteHost, remotePort)) {
+        tunnelManager_->watchStatus();
+    }
+    return tunnelManager_->close();
+}
+
+bool tunnelRunFromString(cxxopts::Options& options) {
+    return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // show stuff
@@ -175,6 +216,10 @@ bool showVersion() {
     return status == NABTO_OK;
 }
 
+} // namespace
+
+using namespace nabtocli;
+
 ////////////////////////////////////////////////////////////////////////////////
 // main
 
@@ -194,9 +239,9 @@ int main(int argc, char** argv) {
             ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
             ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
             ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
-            ("l,tunnel-local-port", "TCP port that local nabto tunnel endpoint listens on", cxxopts::value<uint16_t>())
+            ("l,tunnel-local-port", "TCP port that local nabto tunnel endpoint listens on", cxxopts::value<uint16_t>()->default_value("0"))
             ("r,tunnel-remote-port", "TCP port that remote nabto tunnel endpoint connects to", cxxopts::value<uint16_t>())
-            ("tunnel-remote-host", "TCP host that remote nabto tunnel endpoint connects to", cxxopts::value<std::string>())
+            ("tunnel-remote-host", "Host on remote network that remote nabto tunnel endpoint connects to", cxxopts::value<std::string>()->default_value("127.0.0.1"))
             ("t,tunnel-string", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
             ("discover", "Show Nabto devices ids discovered on local network")
@@ -251,6 +296,31 @@ int main(int argc, char** argv) {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
+        // tunnel
+        
+        if (options.count("tunnel-host") && options.count("tunnel-remote-port")) {
+            if (!options.count("cert-name")) {
+                die("Missing cert-name parameter");
+            }
+            if (tunnelRunFromParams(options)) {
+                exit(0);
+            } else {
+                die("Could not start tunnel");
+            }
+        }
+
+        if (options.count("tunnel-string")) {
+            if (!options.count("cert-name")) {
+                die("Missing cert-name parameter");
+            }
+            if (tunnelRunFromString(options)) {
+                exit(0);
+            } else {
+                die("Could not start tunnel");
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
         // show stuff
 
         if (options.count("discover")) {
@@ -268,9 +338,6 @@ int main(int argc, char** argv) {
             die("", 0);
         }
 
-
-
-
         help(options);
         
     } catch (const cxxopts::OptionException& e)
@@ -278,9 +345,8 @@ int main(int argc, char** argv) {
         std::cout << "error parsing options: " << e.what() << std::endl;
         exit(1);
     }
-
+    
 
     return 0;
 }
-
 
