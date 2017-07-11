@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2017 Nabto - All Rights Reserved.
+ */
+
 #include <iostream>
 #include <fstream>
 
@@ -340,13 +344,11 @@ int main(int argc, char** argv) {
 
         help(options);
         
-    } catch (const cxxopts::OptionException& e)
+    }
+    catch (const cxxopts::OptionException& e)
     {
-        std::cout << "error parsing options: " << e.what() << std::endl;
+        std::cout << "Error parsing options: " << e.what() << std::endl;
         exit(1);
     }
-    
-
     return 0;
 }
-

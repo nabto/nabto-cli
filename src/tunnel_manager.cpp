@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2017 Nabto - All Rights Reserved.
+ */
+
 #include <thread>
 #include <map>
 #include <iostream>

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2017 Nabto - All Rights Reserved.
+ */
+
 #pragma once
 #include <vector>
 #include "nabto_client_api.h"

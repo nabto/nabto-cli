@@ -1,3 +1,7 @@
+# 
+# Copyright (C) 2017 Nabto - All Rights Reserved.
+# 
+
 cmake_minimum_required(VERSION 3.8)
 project (nabto-cli)
 
