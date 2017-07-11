@@ -24,7 +24,7 @@ After download, install the libraries and header files into the `lib` and `inclu
     └── tunnel_manager.hpp
 ```
 
-Note that no resources are necessary to install, with the 4.1.0 release these come bundles in the SDK and are automatically installed by the demo app (through `nabtoInstallDefaultStaticResources` in the client API).
+Note that no resources are necessary to install, with the 4.1.0 release these come bundled in the SDK and are automatically installed by the demo app (through `nabtoInstallDefaultStaticResources` in the client API).
 
 ## Building and running
 
@@ -54,6 +54,11 @@ Usage:
 ```
 
 ## Examples
+
+It is assumed that the fingerprint of an available certificate (see first example) is added to the ACL of the target device. See section 8 in [TEN036 "Security in Nabto Solutions"](https://www.nabto.com/downloads/docs/TEN036%20Security%20in%20Nabto%20Solutions.pdf) for further details.
+
+Further more, it is assumed for the tunnel examples that the device endpoint has been configured to allow access to the specified remote hosts and TCP ports. See section 4.4.1 in [TEN030 "Nabto Tunnels"](https://www.nabto.com/downloads/docs/TEN030%20Nabto%20Tunnels.pdf) for further details.
+
 
 ### Create certificate
 
