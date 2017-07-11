@@ -229,9 +229,6 @@ int main(int argc, char** argv) {
     try
     {
         cxxopts::Options options(argv[0], "Nabto Command Line demo");
-        options.positional_help("[optional args]");
-
-        bool apple = true;
 
         options.add_options()
             ("c,create-cert", "Create self signed certificate")
