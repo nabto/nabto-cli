@@ -27,37 +27,42 @@ bool TunnelManager::open(uint16_t localPort,
 }
     
 bool TunnelManager::watchStatus() {
-    while (!stop_) {
+    bool allClosed = false;
+    while (!stop_ && !allClosed) {
+        allClosed = true;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         for (auto&& tunnel : tunnels_) {
             nabto_tunnel_state_t newState = NTCS_CLOSED;
             nabto_status_t st = nabtoTunnelInfo(tunnel, NTI_STATUS, sizeof(newState), &newState);
             if (st != NABTO_OK) {
-                std::cout << "?" << std::flush;
-            } else if (newState == NTCS_CONNECTING) {
-                std::cout << "." << std::flush;
+                std::cout << "Failed to get tunnel status for tunnel " << tunnel << std::endl;
             } else if (newState == NTCS_CLOSED && tunnelStates_[tunnel] != NTCS_CLOSED) {
-                std::cout << " connection closed." << std::endl;
                 int ec;
                 st = nabtoTunnelInfo(tunnel, NTI_LAST_ERROR, sizeof(ec), &ec);
                 if (st == NABTO_OK) {
-                    std::cout << "   last error = " << ec << std::endl;
+                    std::cout << "Connection closed, last error = " << ec << std::endl;
+                } else {
+                    std::cout << "Connection closed, could not get error code" << std::endl;
                 }
+            } else {
+                allClosed = false;
             }
                 
             if (tunnelStates_[tunnel] != newState) {
-                if (tunnelStates_[tunnel] == NTCS_CONNECTING) {
-                    std::cout << std::endl;
-                }
                 std::cout << "State has changed for tunnel " << tunnel << " status " << statusStr(newState) << " (" << newState << ")" << std::endl;
                 tunnelStates_[tunnel] = newState;
                 int version;
-                    
-                version = -1; 
-                nabtoTunnelInfo(tunnel, NTI_VERSION, sizeof(version), &version);
-                unsigned short port = -1;
-                nabtoTunnelInfo(tunnel, NTI_PORT, sizeof(port), &port);
-                std::cout << "Tunnel connected, tunnel version: " << version << ", local TCP port: " << port << std::endl;
+                if (newState == NTCS_LOCAL ||
+                    newState == NTCS_REMOTE_P2P ||
+                    newState == NTCS_REMOTE_RELAY ||
+                    newState == NTCS_REMOTE_RELAY_MICRO)
+                {
+                    version = -1; 
+                    nabtoTunnelInfo(tunnel, NTI_VERSION, sizeof(version), &version);
+                    unsigned short port = -1;
+                    nabtoTunnelInfo(tunnel, NTI_PORT, sizeof(port), &port);
+                    std::cout << "Tunnel " << tunnel << " connected, tunnel version: " << version << ", local TCP port: " << port << std::endl;
+                }
             }
         }
     }
@@ -69,10 +74,13 @@ void TunnelManager::stop() {
 }
 
 bool TunnelManager::close() {
+    std::cout << "Closing " << tunnels_.size() << " tunnel(s)" << std::endl;
     for (auto&& tunnel : tunnels_) {
         nabto_status_t st = nabtoTunnelClose(tunnel);
-        if (st != NABTO_OK) {
-            std::cout << "Tunnel close failed with status " << st << std::endl;
+        if (st == NABTO_OK) {
+            std::cout << "Tunnel " << tunnel << " closed" << std::endl;
+        } else {
+            std::cout << "Tunnel " << tunnel << " close failed with status " << st << std::endl;
         }
     }
     return true;

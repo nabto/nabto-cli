@@ -14,10 +14,8 @@ namespace nabtocli {
 static std::unique_ptr<TunnelManager> tunnelManager_;
 
 void sigHandler(int signo) {
-    if (signo == SIGINT) {
-        if (tunnelManager_) {
-            tunnelManager_->stop();
-        }
+    if (signo == SIGINT && tunnelManager_) {
+        tunnelManager_->stop();
     }
 }
 
@@ -254,7 +252,25 @@ int main(int argc, char** argv) {
         if (!init(options)) {
             die("Initialization failed");
         }
-        
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // show stuff
+
+        if (options.count("discover")) {
+            showLocalDevices();
+            exit(0);
+        }
+
+        if (options.count("version")) {
+            showVersion();
+            exit(0);
+        }
+
+        if (options.count("help")) {
+            help(options);
+            die("", 0);
+        }
+
         ////////////////////////////////////////////////////////////////////////////////
         // certs 
         
@@ -303,6 +319,7 @@ int main(int argc, char** argv) {
                 die("Missing cert-name parameter");
             }
             if (tunnelRunFromParams(options)) {
+                nabtoShutdown();
                 exit(0);
             } else {
                 die("Could not start tunnel");
@@ -314,28 +331,11 @@ int main(int argc, char** argv) {
                 die("Missing cert-name parameter");
             }
             if (tunnelRunFromString(options)) {
+                nabtoShutdown();
                 exit(0);
             } else {
                 die("Could not start tunnel");
             }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // show stuff
-
-        if (options.count("discover")) {
-            showLocalDevices();
-            exit(0);
-        }
-
-        if (options.count("version")) {
-            showVersion();
-            exit(0);
-        }
-
-        if (options.count("help")) {
-            help(options);
-            die("", 0);
         }
 
         help(options);
