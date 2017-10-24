@@ -4,7 +4,7 @@ This application demonstrates how to use the Nabto Client SDK to exercise certif
 
 ## SDK installation
 
-To build the Nabto CLI Demo, first download the Nabto Client SDK bundle from https://www.nabto.com/downloads.html. Note: The demo uses the 4.1.0 version of the Nabto Client SDK; as of writing, only a pre-release version with linux64 libraries is available. This early version can be downloaded here: https://www.nabto.com/downloads/nabto-libs/4.1.0-rc1/nabto_libraries.zip
+To build the Nabto CLI Demo, first download the Nabto Client SDK bundle from https://www.nabto.com/downloads.html. 
 
 After download, install the libraries and header files into the `lib` and `include` directories, so you have the following structure:
 
