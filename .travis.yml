@@ -1,0 +1,14 @@
+dist: trusty
+language: c++
+os:
+  - linux
+
+script:
+  - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+  - unzip nabto-libs.zip
+  - cp nabto-libs/linux64/lib/libnabto_*.a lib/
+  - cp nabto-libs/linux64/include/nabto_client_api.h include/
+  - mkdir -p build
+  - cd build
+  - cmake ..
+  - make
