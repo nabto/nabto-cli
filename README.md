@@ -1,9 +1,11 @@
 # Nabto CLI Demo
 
-[![Build Status][1]][2]
+[![Build Status][1]][2] [![Windows Build Status][3]][4]
 
 [1]: https://travis-ci.org/nabto/nabto-cli.svg?branch=master
 [2]: https://travis-ci.org/nabto/nabto-cli
+[3]: https://ci.appveyor.com/api/projects/status/github/nabto/nabto-cli?svg=true&branch=master
+[4]: https://ci.appveyor.com/project/nabto/nabto-cli
 
 This application demonstrates how to use the Nabto Client SDK to exercise certificate management, device discovery, RPC device invocation and tunnel management.
 
