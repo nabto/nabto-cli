@@ -6,8 +6,9 @@ build_script:
 
     7z x nabto-libs.zip
 
-    cp nabto-libs\win32\lib\*.lib lib\
-    cp nabto-libs\win32\include\nabto_client_api.h include\
+    copy nabto-libs\win32\lib\*.lib lib\
+
+    copy nabto-libs\win32\include\nabto_client_api.h include\
     
     mkdir build || exit 1
     
