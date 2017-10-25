@@ -3,8 +3,12 @@
  */
 
 #pragma once
-#include <vector>
 #include "nabto_client_api.h"
+
+#include <vector>
+#include <map>
+#include <atomic>
+
 
 namespace nabtocli {
 

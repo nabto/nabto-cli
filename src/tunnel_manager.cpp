@@ -2,11 +2,12 @@
  * Copyright (C) 2017 Nabto - All Rights Reserved.
  */
 
+#include "tunnel_manager.hpp"
+
 #include <thread>
 #include <map>
 #include <iostream>
 
-#include "tunnel_manager.hpp"
 
 namespace nabtocli {
 

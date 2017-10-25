@@ -2,6 +2,10 @@
  * Copyright (C) 2017 Nabto - All Rights Reserved.
  */
 
+#include "tunnel_manager.hpp"
+#include "nabto_client_api.h"
+#include "cxxopts.hpp"
+
 #include <iostream>
 #include <fstream>
 
@@ -9,9 +13,6 @@
 #include <signal.h>
 #endif
 
-#include "cxxopts.hpp"
-#include "nabto_client_api.h"
-#include "tunnel_manager.hpp"
 
 namespace nabtocli {
 
