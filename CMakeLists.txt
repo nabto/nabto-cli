@@ -2,7 +2,7 @@
 # Copyright (C) 2017 Nabto - All Rights Reserved.
 # 
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.2)
 project (nabto-cli)
 
 find_library(NABTO_CORE_LIB
@@ -24,7 +24,13 @@ endif()
 add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp)
 target_compile_features(nabto-cli PRIVATE cxx_range_for)
 
+
+
 include_directories(include)
 target_link_libraries (nabto-cli ${NABTO_CORE_LIB} ${NABTO_EXT_LIB})
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  target_link_libraries(nabto-cli pthread dl)
+endif()
 
 install (TARGETS nabto-cli DESTINATION bin)
