@@ -24,5 +24,6 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cp nabto-libs/mac64/lib/libnabto_client_api.dylib lib/; fi;
   - mkdir -p build
   - cd build
-  - cmake ..
-  - cmake --build .
+  - cmake -DCMAKE_INSTALL_PREFIX=`pwd` ..
+  - cmake --build . --target install
+  - ./bin/nabto-cli -v
