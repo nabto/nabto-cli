@@ -23,8 +23,7 @@ After download, install the libraries and header files into the `lib` and `inclu
 │   ├── cxxopts.hpp
 │   └── nabto_client_api.h
 ├── lib
-│   ├── libnabto_client_api_static.a
-│   └── libnabto_static_external.a
+│   └── libnabto_client_api.so
 └── src
     ├── nabto_cli.cpp
     ├── tunnel_manager.cpp
@@ -32,6 +31,16 @@ After download, install the libraries and header files into the `lib` and `inclu
 ```
 
 Note that no resources are necessary to install, with the 4.1.0 release these come bundled in the SDK and are automatically installed by the demo app (through `nabtoInstallDefaultStaticResources` in the client API).
+
+The lib folder should contain the following files:
+
+| Linux                    | Mac                         | Windows                |
+| ------------------------ | --------------------------- | ---------------------- |
+| `libnabto_client_api.so` | `libnabto_client_api.dylib` | `nabto_client_api.lib` |
+|                          |                             | `nabto_client_api.dll` |
+
+
+`nabto_client_api.dll` and `nabto_client_api.lib`, on Mac `nabto_client_api.dylib` and 
 
 ## Building and running
 
