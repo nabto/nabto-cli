@@ -37,3 +37,11 @@ endif()
 install(FILES ${NABTO_CORE_LIB_INSTALL} DESTINATION bin)
 
 install (TARGETS nabto-cli DESTINATION bin)
+
+# On apple the rpath trick does not work as intended, fix it given the idea from the following blog post
+# https://blogs.oracle.com/dipol/dynamic-libraries,-rpath,-and-mac-os
+if (APPLE)
+  install(
+    CODE "execute_process(COMMAND install_name_tool -change libnabto_client_api.dylib \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/bin/nabto-cli)"
+)
+endif()
