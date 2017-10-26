@@ -31,8 +31,4 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   target_link_libraries(nabto-cli pthread dl)
 endif()
 
-if (APPLE)
-  target_link_libraries(nabto-cli rt)
-endif()
-
 install (TARGETS nabto-cli DESTINATION bin)
