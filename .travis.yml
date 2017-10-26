@@ -34,8 +34,9 @@ deploy:
   provider: releases
   api_key:
     secure: W4YBtEhgoGJcDIpF8oQMwNubm6Qv85SNbZcTmCGBh/r6S5jETwj9gWIJl8WCWBZsb1+7naPFEgEHTcwnL8mI1iCae6/N7vW1ARZGhaDTJkPRZSEMztNg/S2J2SQ5XEXTjka8HWtRizyEP0mCb1xgJPhT8F2LJDNR16+VqfdhQ6yQ1XKGDR4kQ9NLCr2BKrwMvhw0FUXWYM4Ibz21B8JE8ygA6f6/tr1VRAzH52IcrHBD3q4RSb7xTDA1+HEPsh8fZFvMUsu1IScVTcZTm5I/b7PXaKQFJEOfo//V1nICt1UIJqTEzb5VWIIB5XmHmJsvoKkTpU12wUW27bkR6KWDfYHaKToguPqGBjKuMyywYg0/A7uuYphGV7b0efkaBuuFLnuSqEmNumhYL01tgINxGC7soMQEQKGtWzgYzvVBkioy+kVUu29ZwhefH6bLAMwasb0D3b+NUEzVD2QgP+LhWNDjimqHMgzaw43nASvPqaqEvS8qlirtmeLZ2pp0Yf3lY3fbNHKDR1xP9WdWGi9191392UM6OWIjWWoNLDKqVGxO6BYjMeH+KvMgO7bG2OxNTh6wsCJYg9HCUJ+bexcgax2PixV7aPIuhZ8jcwXUBSGH9430Edlpa6da5BGH+wzXwDEo8ZYXAyOGnMpMpmjQKmqRWd4YZZhJO1esbQ2Bha4=
-  file_glob: true
-  file: build/nabto-cli-*.zip
+  file:
+    - build/nabto-cli-linux.zip
+    - build/nabto-cli-darwin.zip
   skip_cleanup: true
   on:
     tags: true
