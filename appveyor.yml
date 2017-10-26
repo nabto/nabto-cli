@@ -20,4 +20,4 @@ build_script:
     
     cmake --build . --config Release --target INSTALL || exit 1
 
-    bin/nabto-cli -v
+    bin\nabto-cli -v
