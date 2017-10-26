@@ -19,9 +19,11 @@ namespace nabtocli {
 static std::unique_ptr<TunnelManager> tunnelManager_;
 
 void sigHandler(int signo) {
+#ifndef WIN32
     if (signo == SIGINT && tunnelManager_) {
         tunnelManager_->stop();
     }
+#endif
 }
 
 void help(cxxopts::Options& options) {

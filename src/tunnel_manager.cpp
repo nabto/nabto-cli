@@ -6,6 +6,7 @@
 
 #include <thread>
 #include <map>
+#include <string>
 #include <iostream>
 
 
