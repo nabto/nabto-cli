@@ -42,7 +42,7 @@ install (TARGETS nabto-cli DESTINATION .)
 # https://blogs.oracle.com/dipol/dynamic-libraries,-rpath,-and-mac-os
 if (APPLE)
   install(
-    CODE "execute_process(COMMAND install_name_tool -change libnabto_client_api.dylib \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/bin/nabto-cli)"
+    CODE "execute_process(COMMAND install_name_tool -change libnabto_client_api.dylib \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/nabto-cli)"
 )
 endif()
 
