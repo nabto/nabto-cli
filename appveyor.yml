@@ -8,6 +8,8 @@ build_script:
 
     copy nabto-libs\win32-static\bin\nabto_client_api.dll lib\
 
+    copy nabto-libs\win32-static\lib\nabto_client_api.lib lib\
+
     copy nabto-libs\win32-static\include\nabto_client_api.h include\
     
     mkdir build || exit 1
