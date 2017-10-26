@@ -46,9 +46,11 @@ if (APPLE)
 )
 endif()
 
+string(TOLOWER ${CMAKE_SYSTEM_NAME} osname)
+
 set(CPACK_GENERATOR "ZIP")
 
-set( CPACK_PACKAGE_FILE_NAME nabto-cli)
+set( CPACK_PACKAGE_FILE_NAME nabto-cli-${osname})
 include(CPack)
 
 
