@@ -28,5 +28,5 @@ script:
   - cd build
   - cmake -DCMAKE_INSTALL_PREFIX=install ..
   - cmake --build . --target install
-  - ./bin/nabto-cli -v || exit 1
+  - ./install/nabto-cli -v || exit 1
   - cmake --build . --target package
