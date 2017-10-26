@@ -34,9 +34,9 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif()
 
 # install dependent shared library to make the installation folder selfcontained.
-install(FILES ${NABTO_CORE_LIB_INSTALL} DESTINATION bin)
+install(FILES ${NABTO_CORE_LIB_INSTALL} DESTINATION .)
 
-install (TARGETS nabto-cli DESTINATION bin)
+install (TARGETS nabto-cli DESTINATION .)
 
 # On apple the rpath trick does not work as intended, fix it given the idea from the following blog post
 # https://blogs.oracle.com/dipol/dynamic-libraries,-rpath,-and-mac-os
@@ -45,3 +45,10 @@ if (APPLE)
     CODE "execute_process(COMMAND install_name_tool -change libnabto_client_api.dylib \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/bin/nabto-cli)"
 )
 endif()
+
+set(CPACK_GENERATOR "ZIP")
+
+set( CPACK_PACKAGE_FILE_NAME nabto-cli)
+include(CPack)
+
+

@@ -16,8 +16,10 @@ build_script:
     
     cd build || exit 1
     
-    cmake -DCMAKE_INSTALL_PREFIX=%cd% -DCMAKE_BUILD_TYPE=Release --config Release .. || exit 1
+    cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release --config Release .. || exit 1
     
     cmake --build . --config Release --target INSTALL || exit 1
 
-    bin\nabto-cli -v
+    bin\nabto-cli -v || exit 1
+
+    cmake --build . --config Release --target package || exit 1
