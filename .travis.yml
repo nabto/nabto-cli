@@ -19,10 +19,9 @@ matrix:
 script:
   - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
   - unzip nabto-libs.zip
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cp nabto-libs/linux64/lib/libnabto_*.a lib/; fi;
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cp nabto-libs/linux64/include/nabto_client_api.h include/; fi;
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cp nabto-libs/mac64/lib/libnabto_*.a lib/; fi;
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cp nabto-libs/mac64/include/nabto_client_api.h include/; fi;
+  - cp nabto-libs/linux64/include/nabto_client_api.h include/
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cp nabto-libs/linux64/lib/libnabto_client_api.so lib/; fi;
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cp nabto-libs/mac64/lib/libnabto_client_api.dylib lib/; fi;
   - mkdir -p build
   - cd build
   - cmake ..
