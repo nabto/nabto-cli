@@ -53,6 +53,9 @@ bool init(cxxopts::Options& options) {
 // cert
 
 bool certCreate(const std::string& commonName, const std::string& password) {
+    if ( password.compare("not-so-secret") == 0 ){
+        std::cout << "Warning: creating certificate with default password for user: " << commonName << std::endl;
+    }
     nabto_status_t st = nabtoCreateSelfSignedProfile(commonName.c_str(), password.c_str());
     if (st != NABTO_OK) {
         std::cout << "Failed to create self signed certificate " << st << std::endl;
@@ -130,6 +133,7 @@ bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
         content = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         ok = true;
     } else {
+        std::cout << "Failed to open queries file: " << file << std::endl;
         ok = false;
     }
     ifs.close();
@@ -164,29 +168,113 @@ bool rpcInvoke(cxxopts::Options& options) {
     return status == NABTO_OK;
 }
 
+bool rpcPair(cxxopts::Options& options) {
+    char** devices;
+    int devicesLength;
+    nabto_status_t status;
+    nabto_handle_t session;
+    char input;
+    int deviceChoice = -1;
+    std::string url = "nabto://";
+
+    status = nabtoGetLocalDevices(&devices, &devicesLength);
+    if (status != NABTO_OK) {
+        std::cout << "Failed to discover local devices" << std::endl;
+        return false;
+    }
+
+    while (deviceChoice < 0 || deviceChoice >= devicesLength){
+        std::cout << "Choose a device for pairing: " << std::endl;
+        std::cout << "[q]: Quit without pairing" << std::endl;
+        for(int i = 0; i < devicesLength; i++) {
+            std::cout << "["<< i << "]: " << devices[i] << std::endl;
+        }
+        std::cin >> input;
+        if (input == 'q') {
+            std::cout << "Quitting" << std::endl;
+            for (int i = 0; i < devicesLength; i++) {
+                nabtoFree(devices[i]);
+            }
+            nabtoFree(devices);
+            exit(0);
+        }
+        deviceChoice = input - '0';
+    }
+
+    if (!certOpenSession(session, options)) {
+        std::cout << "Failed to open session" << std::endl;
+        for (int i = 0; i < devicesLength; i++) {
+            nabtoFree(devices[i]);
+        }
+        nabtoFree(devices);
+        return false;
+    }
+    if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
+        for (int i = 0; i < devicesLength; i++) {
+            nabtoFree(devices[i]);
+        }
+        nabtoFree(devices);
+        return false;
+    }
+    char* json;
+    url.append(devices[deviceChoice]);
+    url.append("/pair_with_device.json?name=");
+    url.append(options["cert-name"].as<std::string>());
+    status = nabtoRpcInvoke(session, url.c_str() , &json);
+    if (status == NABTO_OK || status == NABTO_FAILED_WITH_JSON_MESSAGE) {
+        std::cout << json << std::endl;
+        nabtoFree(json);
+    } else {
+        std::cout << "RPC invocation failed with status " << status << std::endl;
+    }
+
+    for (int i = 0; i < devicesLength; i++) {
+        nabtoFree(devices[i]);
+    }
+    nabtoFree(devices);
+    return true;
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // tunnel
 
-bool tunnelRunFromParams(cxxopts::Options& options) {
+bool tunnelRunFromString(cxxopts::Options& options) {
     nabto_handle_t session;
+
     if (!certOpenSession(session, options)) {
         return false;
     }
     tunnelManager_.reset(new TunnelManager(session));
 
-    uint16_t localPort = options["tunnel-local-port"].as<uint16_t>();
-    const std::string& deviceId = options["tunnel-host"].as<std::string>();
-    uint16_t remotePort = options["tunnel-remote-port"].as<uint16_t>();
-    const std::string& remoteHost = options["tunnel-remote-host"].as<std::string>();
+    for (auto tunnelStr : options["tunnel"].as<std::vector<std::string> >()) {
+        int localPort, remotePort;
+        std::string remoteHost;
+        size_t first = tunnelStr.find(':');
+        if(first == std::string::npos) {
+            std::cout << "Error: invalid tunnel string: " << tunnelStr << std::endl;
+            exit(1);
+        } else if (first == 0 ) {
+            localPort = 0;
+        } else {
+            localPort = std::stoi(std::string(tunnelStr,0,first));
+        }
 
-    if (tunnelManager_->open(localPort, deviceId, remoteHost, remotePort)) {
-        tunnelManager_->watchStatus();
+        size_t second = tunnelStr.find(':',first+1);
+        if(second == std::string::npos) {
+            std::cout << "Error: invalid tunnel string: " << tunnelStr << std::endl;
+            exit(1);
+        } else {
+            remoteHost = std::string(tunnelStr,first+1,second-first-1);
+            remotePort = std::stoi(std::string(tunnelStr,second+1));
+        }
+        if (!tunnelManager_->open(localPort, options["tunnel-host"].as<std::string>(), remoteHost, remotePort)) {
+            std::cout << "Failed to open tunnel: " << tunnelStr << std::endl;
+            exit(1);
+        }
     }
-    return tunnelManager_->close();
-}
-
-bool tunnelRunFromString(cxxopts::Options& options) {
-    return false;
+    tunnelManager_->watchStatus();
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,11 +329,9 @@ int main(int argc, char** argv) {
             ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
             ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
             ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
-            ("l,tunnel-local-port", "TCP port that local nabto tunnel endpoint listens on", cxxopts::value<uint16_t>()->default_value("0"))
-            ("r,tunnel-remote-port", "TCP port that remote nabto tunnel endpoint connects to", cxxopts::value<uint16_t>())
-            ("tunnel-remote-host", "Host on remote network that remote nabto tunnel endpoint connects to", cxxopts::value<std::string>()->default_value("127.0.0.1"))
-            ("t,tunnel-string", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
+            ("t,tunnel", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
+            ("pair", "pair user to a local device")
             ("discover", "Show Nabto devices ids discovered on local network")
             ("certs", "Show available certificates")
             ("v,version", "Show version")
@@ -315,24 +401,27 @@ int main(int argc, char** argv) {
             }
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // tunnel
-        
-        if (options.count("tunnel-host") && options.count("tunnel-remote-port")) {
+        if (options.count("pair")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (tunnelRunFromParams(options)) {
+            if (rpcPair(options)) {
                 nabtoShutdown();
                 exit(0);
             } else {
-                die("Could not start tunnel");
+                die("Pairing failed");
             }
         }
 
-        if (options.count("tunnel-string")) {
+        ////////////////////////////////////////////////////////////////////////////////
+        // tunnel
+        
+        if (options.count("tunnel")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
+            }
+            if (!options.count("tunnel-host")) {
+                die("Missing tunnel-host parameter");
             }
             if (tunnelRunFromString(options)) {
                 nabtoShutdown();

@@ -11,7 +11,7 @@ This application demonstrates how to use the Nabto Client SDK to exercise certif
 
 ## SDK installation
 
-To build the Nabto CLI Demo, first download the Nabto Client SDK bundle from https://www.nabto.com/downloads.html. 
+To build the Nabto CLI Demo, first download the `Nabto SDK static libs` bundle from https://www.nabto.com/downloads.html.
 
 After download, install the libraries and header files into the `lib` and `include` directories, so you have the following structure:
 
@@ -38,9 +38,6 @@ The lib folder should contain the following files:
 | ------------------------ | --------------------------- | ---------------------- |
 | `libnabto_client_api.so` | `libnabto_client_api.dylib` | `nabto_client_api.lib` |
 |                          |                             | `nabto_client_api.dll` |
-
-
-`nabto_client_api.dll` and `nabto_client_api.lib`, on Mac `nabto_client_api.dylib` and 
 
 ## Building and running
 
@@ -73,6 +70,8 @@ Usage:
 
 It is assumed that the fingerprint of an available certificate (see first example) is added to the ACL of the target device. See section 8 in [TEN036 "Security in Nabto Solutions"](https://www.nabto.com/downloads/docs/TEN036%20Security%20in%20Nabto%20Solutions.pdf) for further details.
 
+It is also assumed that a uNabto device is available. For the examples, `xj00cmgr.nw7xqz.appmyproduct.com` is used which should be replaced by your device ID. To get a device ID go to https://www.appmyproduct.com.
+
 Further more, it is assumed for the tunnel examples that the device endpoint has been configured to allow access to the specified remote hosts and TCP ports. See section 4.4.1 in [TEN030 "Nabto Tunnels"](https://www.nabto.com/downloads/docs/TEN030%20Nabto%20Tunnels.pdf) for further details.
 
 
@@ -86,8 +85,10 @@ Created self signed cert with fingerprint [53:84:b3:a6:f6:4a:c5:73:4e:5d:7a:3a:6
 
 ### Invoke RPC function
 
+This example uses the appmyproduct-device-stub device as the device endpoint(https://github.com/nabto/appmyproduct-device-stub). This device uses the query definitions defined in the `unabto_queries.xml` file found at https://github.com/nabto/ionic-starter-nabto/blob/master/www/nabto/unabto_queries.xml.
+
 ```console
-$ ./nabto-cli --cert-name nabto-user --interface-definition ../unabto_queries.xml \
+$ ./nabto-cli --cert-name nabto-user --interface-definition /path/to/unabto_queries.xml \
   --rpc-invoke-url nabto://xj00cmgr.nw7xqz.appmyproduct.com/get_public_device_info.json? 
 {
    "request" : {},
@@ -101,24 +102,26 @@ $ ./nabto-cli --cert-name nabto-user --interface-definition ../unabto_queries.xm
    }
 }
 ```
+### Opening TCP tunnels
 
+A TCP tunnel is defined using the `--tunnel` argument, which takes a string of the format `<localPort>:<remoteHost>:<remotePort>`. This argument can be specified multiple times to open multiple tunnels. The string must always contain two colons and a remotePort number, whereas localPort and remoteHost can be ommitted to use an ephemeral port and localhost as the remoteHost.
 
-### Open TCP tunnel using ephemeral port
+#### Open TCP tunnel using ephemeral port
 
-Per default a TCP tunnel connects to a TCP socket on localhost on the remote peer, the only mandatory parameters are the remote nabto device id and the remote TCP port. For instance, the following retrieves a page from an HTTP server on the remote peer:
+Per default a TCP tunnel connects to a TCP socket on localhost on the remote peer, the only mandatory parameters are the remote nabto device id, the remote TCP port, and the certificate name. For instance, the following retrieves a page from an HTTP server on the remote peer:
 
 ```console
 $ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
-  --tunnel-remote-port 80
-State has changed for tunnel 0x961aa635 status CONNECTING (0)
-State has changed for tunnel 0x961aa635 status REMOTE_P2P (4)
-Tunnel 0x961aa635 connected, tunnel version: 1, local TCP port: 54285
+  --tunnel ::80
+State has changed for tunnel 0x9f2ede35 status CONNECTING (0)
+State has changed for tunnel 0x9f2ede35 status REMOTE_P2P (4)
+Tunnel 0x92b29434 connected, tunnel version: 1, local TCP port: 46785
 ```
 
-The ephemeral port 54285 was chosen by the system, the webpage can now be retrieved using:
+The ephemeral port 46785 was chosen by the system, the webpage can now be retrieved using:
 
 ```console
-$ curl -s http://127.0.0.1:54285
+$ curl -s http://127.0.0.1:46785
 <!DOCTYPE html>
 <html>
 <head>
@@ -127,17 +130,16 @@ $ curl -s http://127.0.0.1:54285
 ```
 
 
-### Open TCP tunnel using specific port 
+#### Open TCP tunnel using specific port
 
 Set the local TCP tunnel client end point to listen on port 12345:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-local-port 12345 \
-  --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
-  --tunnel-remote-port 80
-State has changed for tunnel 0x961aa635 status CONNECTING (0)
-State has changed for tunnel 0x961aa635 status REMOTE_P2P (4)
-Tunnel 0x961aa635 connected, tunnel version: 1, local TCP port: 12345
+$ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
+  --tunnel 12345::80
+State has changed for tunnel 0xbc496535 status CONNECTING (0)
+State has changed for tunnel 0xbc496535 status REMOTE_P2P (4)
+Tunnel 0xbc496535 connected, tunnel version: 1, local TCP port: 12345
 ```
 
 ```console
@@ -147,14 +149,13 @@ $ curl -s http://127.0.0.1:12345
 ```
 
 
-### Open TCP tunnel to using a non-local remote TCP server
+#### Open TCP tunnel to using a non-local remote TCP server
 
 Open a local TCP tunnel client end point on port 12345. The remote tunnel endpoint must connect to TCP port 80 on the host 192.168.1.123, reachable from the remote peer:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-local-port 12345 \
-  --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
-  --tunnel-remote-host 192.168.1.123 --tunnel-remote-port 80
+$ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
+  --tunnel 12345:192.168.1.123:80
 State has changed for tunnel 0x961aa635 status CONNECTING (0)
 State has changed for tunnel 0x961aa635 status REMOTE_P2P (4)
 Tunnel 0x961aa635 connected, tunnel version: 1, local TCP port: 12345
@@ -166,3 +167,4 @@ $ curl -s http://127.0.0.1:12345
 [...]
 ```
 
+This can also be done using an ephemeral port by setting the local port to 0 or ommitting it completely.
