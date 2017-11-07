@@ -21,11 +21,14 @@ After download, install the libraries and header files into the `lib` and `inclu
 ├── README.md
 ├── include
 │   ├── cxxopts.hpp
+│   ├── json.h
+│   ├── json_helper.hpp
 │   └── nabto_client_api.h
 ├── lib
 │   └── libnabto_client_api.so
 └── src
     ├── nabto_cli.cpp
+    ├── jsoncpp.cpp
     ├── tunnel_manager.cpp
     └── tunnel_manager.hpp
 ```
@@ -82,14 +85,41 @@ $ ./nabto-cli --create-cert --cert-name nabto-user
 Created self signed cert with fingerprint [53:84:b3:a6:f6:4a:c5:73:4e:5d:7a:3a:62:36:11:21]
 ```
 
-
-### Invoke RPC function
+### RPC functions
 
 This example uses the appmyproduct-device-stub device as the device endpoint(https://github.com/nabto/appmyproduct-device-stub). This device uses the query definitions defined in the `unabto_queries.xml` file found at https://github.com/nabto/ionic-starter-nabto/blob/master/www/nabto/unabto_queries.xml.
 
+#### Strict interface checking
+When invoking RPC functionallity, Strict Interface Checking will ensure the interface definition between the device and the client is compatible. This is enabled with the `--strict-interface-check` argument, which will check the interface definition of the device with values provided by the `--interface-id` and `--interface-version` arguments
+
+
+#### Pair with device
+```console
+./nabto-cli --cert-name nabto-user --pair --interface-definition /path/to/unabto_queries.xml \
+--strict-interface-check --interface-id 317aadf2-3137-474b-8ddb-fea437c424f4 --interface-version 1.0
+
+Choose a device for pairing:
+[q]: Quit without pairing
+[0]: xj00cmgr.nw7xqz.appmyproduct.com
+0
+{
+   "request" : {
+      "name" : "nabto-user"
+   },
+   "response" : {
+      "fingerprint" : "37b02567fbbf1257adea75dfbb6c438b",
+      "name" : "nabto-user",
+      "permissions" : 2147483648,
+      "status" : 0
+   }
+}
+```
+
+#### Invoke Function
 ```console
 $ ./nabto-cli --cert-name nabto-user --interface-definition /path/to/unabto_queries.xml \
-  --rpc-invoke-url nabto://xj00cmgr.nw7xqz.appmyproduct.com/get_public_device_info.json? 
+ --strict-interface-check --interface-id 317aadf2-3137-474b-8ddb-fea437c424f4 --interface-version 1.0 \
+ --rpc-invoke-url nabto://xj00cmgr.nw7xqz.appmyproduct.com/get_public_device_info.json?
 {
    "request" : {},
    "response" : {
