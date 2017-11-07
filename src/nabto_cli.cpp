@@ -5,6 +5,8 @@
 #include "tunnel_manager.hpp"
 #include "nabto_client_api.h"
 #include "cxxopts.hpp"
+#include "json.h"
+#include "json_helper.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -149,6 +151,62 @@ bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
     return status == NABTO_OK;
 }
 
+bool checkInterface(nabto_handle_t session, std::string device, cxxopts::Options& options) {
+    if (!options.count("interface-id") || !options.count("interface-version")) {
+        std::cout << "ERROR: strict-interface-check was given, but interface-id or interface-version was missing" << std::endl;
+        return false;
+    } else if (options["interface-version"].as<std::string>().find(".") == std::string::npos) {
+        std::cout << "ERROR: Badly formatted version string: " << options["interface-version"].as<std::string>() << std::endl;
+        return false;
+    }
+
+    std::string localVersion = options["interface-version"].as<std::string>();
+    int localMajor, localMinor;
+    try {
+        localMajor = std::stoi(localVersion);
+        localMinor = std::stoi(std::string(&localVersion[localVersion.find(".")+1]));
+    } catch (std::invalid_argument) {
+        std::cout << "ERROR: invalid version provided: " << options["interface-version"].as<std::string>() << std::endl;
+        return false;
+    }
+    if (localMajor < 1 || localMinor < 0) {
+        std::cout << "ERROR: invalid version provided: " << options["interface-version"].as<std::string>() << std::endl;
+        return false;
+    }
+
+    std::string interfaceString("nabto://");
+    interfaceString.append(device);
+    interfaceString.append("/get_interface_info.json");
+    char* json;
+    nabto_status status = nabtoRpcInvoke(session, interfaceString.c_str(), &json);
+    if (status == NABTO_OK) {
+        Json::Value jsonDoc;
+        nabto::JsonHelper::parse(std::string(json),jsonDoc);
+        nabtoFree(json);
+        int major = jsonDoc["response"]["interface_version_major"].asInt();
+        int minor = jsonDoc["response"]["interface_version_minor"].asInt();
+        std::string interfaceId = options["interface-id"].as<std::string>();
+
+        if (interfaceId.compare(jsonDoc["response"]["interface_id"].asString()) != 0) {
+            std::cout << "ERROR: Interface ID mismatch: " << interfaceId << " != " << jsonDoc["response"]["interface_id"] << std::endl;
+            return false;
+        } else if (major != localMajor || minor > localMinor) {
+            std::cout << "ERROR: interface version mismatch between: " << major << "." << minor << " and " << localMajor << "." << localMinor << std::endl;
+            return false;
+        } else {
+            return true;
+        }
+    } else if(status == NABTO_FAILED_WITH_JSON_MESSAGE) {
+        std::cout << json << std::endl;
+        nabtoFree(json);
+    } else {
+        std::cout << "RPC invocation failed with status " << status << std::endl;
+        nabtoFree(json);
+        return false;
+    }
+    return true;
+}
+
 bool rpcInvoke(cxxopts::Options& options) {
     nabto_handle_t session;
     if (!certOpenSession(session, options)) {
@@ -156,6 +214,13 @@ bool rpcInvoke(cxxopts::Options& options) {
     }
     if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
         return false;
+    }
+    if(options.count("strict-interface-check")) {
+        size_t slash = options["rpc-invoke-url"].as<std::string>().find("/", 8);
+        if (!checkInterface(session, std::string(&options["rpc-invoke-url"].as<std::string>()[8],slash-8), options)) {
+            std::cout << "ERROR: strict interface check failed" << std::endl;
+            return false;
+        }
     }
     char* json;
     nabto_status status = nabtoRpcInvoke(session, options["rpc-invoke-url"].as<std::string>().c_str(), &json);
@@ -196,7 +261,7 @@ bool rpcPair(cxxopts::Options& options) {
                 nabtoFree(devices[i]);
             }
             nabtoFree(devices);
-            exit(0);
+            return false;
         }
         deviceChoice = input - '0';
     }
@@ -215,6 +280,12 @@ bool rpcPair(cxxopts::Options& options) {
         }
         nabtoFree(devices);
         return false;
+    }
+    if(options.count("strict-interface-check")) {
+        if (!checkInterface(session, std::string(devices[deviceChoice]), options)) {
+            std::cout << "ERROR: strict interface check failed" << std::endl;
+            return false;
+        }
     }
     char* json;
     url.append(devices[deviceChoice]);
@@ -253,7 +324,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
         size_t first = tunnelStr.find(':');
         if(first == std::string::npos) {
             std::cout << "Error: invalid tunnel string: " << tunnelStr << std::endl;
-            exit(1);
+            return false;;
         } else if (first == 0 ) {
             localPort = 0;
         } else {
@@ -263,14 +334,14 @@ bool tunnelRunFromString(cxxopts::Options& options) {
         size_t second = tunnelStr.find(':',first+1);
         if(second == std::string::npos) {
             std::cout << "Error: invalid tunnel string: " << tunnelStr << std::endl;
-            exit(1);
+            return false;
         } else {
             remoteHost = std::string(tunnelStr,first+1,second-first-1);
             remotePort = std::stoi(std::string(tunnelStr,second+1));
         }
         if (!tunnelManager_->open(localPort, options["tunnel-host"].as<std::string>(), remoteHost, remotePort)) {
             std::cout << "Failed to open tunnel: " << tunnelStr << std::endl;
-            exit(1);
+            return false;
         }
     }
     tunnelManager_->watchStatus();
@@ -328,6 +399,9 @@ int main(int argc, char** argv) {
             ("basestation-auth-json", "JSON doc to pass to basestation for authentication", cxxopts::value<std::string>())
             ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
             ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
+            ("strict-interface-check", "Use strict interface check for all RPC calls")
+            ("interface-id", "interface ID to match for strict interface check", cxxopts::value<std::string>())
+            ("interface-version", "<major>.<minor> version number to match for strict interface check", cxxopts::value<std::string>())
             ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
             ("t,tunnel", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())

@@ -23,7 +23,7 @@ endif()
 
 SET(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp)
+add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp src/jsoncpp.cpp)
 target_compile_features(nabto-cli PRIVATE cxx_range_for)
 
 include_directories(include)
