@@ -41,8 +41,13 @@ install (TARGETS nabto-cli DESTINATION .)
 # On apple the rpath trick does not work as intended, fix it given the idea from the following blog post
 # https://blogs.oracle.com/dipol/dynamic-libraries,-rpath,-and-mac-os
 if (APPLE)
+  add_custom_command(
+    TARGET nabto-cli
+    POST_BUILD
+    COMMAND install_name_tool -change libnabto_client_api.dylib "${CMAKE_SOURCE_DIR}/lib/libnabto_client_api.dylib" $<TARGET_FILE:nabto-cli>)
+
   install(
-    CODE "execute_process(COMMAND install_name_tool -change libnabto_client_api.dylib \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/nabto-cli)"
+    CODE "execute_process(COMMAND install_name_tool -change \"${CMAKE_SOURCE_DIR}/lib/libnabto_client_api.dylib\" \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/nabto-cli)"
 )
 endif()
 
