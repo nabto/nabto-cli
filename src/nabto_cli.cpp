@@ -105,8 +105,8 @@ bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
     const std::string& passwd = options["password"].as<std::string>();
     nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), passwd.c_str());
     if (status == NABTO_OK) {
-        if (options.count("basestation-auth-json")) {
-            const std::string& json = options["basestation-auth-json"].as<std::string>();
+        if (options.count("bs-auth-json")) {
+            const std::string& json = options["bs-auth-json"].as<std::string>();
             if (nabtoSetBasestationAuthJson(session, json.c_str()) == NABTO_OK) {
                 return true;
             } else {
@@ -190,7 +190,7 @@ bool checkInterface(nabto_handle_t session, std::string device, cxxopts::Options
         if (interfaceId.compare(jsonDoc["response"]["interface_id"].asString()) != 0) {
             std::cout << "ERROR: Interface ID mismatch: " << interfaceId << " != " << jsonDoc["response"]["interface_id"] << std::endl;
             return false;
-        } else if (major != localMajor || minor > localMinor) {
+        } else if (major != localMajor || minor < localMinor) {
             std::cout << "ERROR: interface version mismatch between: " << major << "." << minor << " and " << localMajor << "." << localMinor << std::endl;
             return false;
         } else {
@@ -212,7 +212,7 @@ bool rpcInvoke(cxxopts::Options& options) {
     if (!certOpenSession(session, options)) {
         return false;
     }
-    if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
+    if (!rpcSetInterface(session, options["interface-def"].as<std::string>())) {
         return false;
     }
     if(options.count("strict-interface-check")) {
@@ -274,7 +274,7 @@ bool rpcPair(cxxopts::Options& options) {
         nabtoFree(devices);
         return false;
     }
-    if (!rpcSetInterface(session, options["interface-definition"].as<std::string>())) {
+    if (!rpcSetInterface(session, options["interface-def"].as<std::string>())) {
         for (int i = 0; i < devicesLength; i++) {
             nabtoFree(devices[i]);
         }
@@ -339,7 +339,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
             remoteHost = std::string(tunnelStr,first+1,second-first-1);
             remotePort = std::stoi(std::string(tunnelStr,second+1));
         }
-        if (!tunnelManager_->open(localPort, options["tunnel-host"].as<std::string>(), remoteHost, remotePort)) {
+        if (!tunnelManager_->open(localPort, options["tunnel-device"].as<std::string>(), remoteHost, remotePort)) {
             std::cout << "Failed to open tunnel: " << tunnelStr << std::endl;
             return false;
         }
@@ -396,20 +396,20 @@ int main(int argc, char** argv) {
             ("c,create-cert", "Create self signed certificate")
             ("n,cert-name", "Certificate name", cxxopts::value<std::string>())
             ("a,password", "Password for private key", cxxopts::value<std::string>()->default_value("not-so-secret"))
-            ("basestation-auth-json", "JSON doc to pass to basestation for authentication", cxxopts::value<std::string>())
+            ("bs-auth-json", "JSON doc to pass to basestation for authentication", cxxopts::value<std::string>())
             ("q,rpc-invoke-url", "URL for RPC query", cxxopts::value<std::string>())
-            ("d,interface-definition", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
+            ("i,interface-def", "Path to unabto_queries.xml file with RPC interface definition", cxxopts::value<std::string>())
             ("strict-interface-check", "Use strict interface check for all RPC calls")
             ("interface-id", "interface ID to match for strict interface check", cxxopts::value<std::string>())
             ("interface-version", "<major>.<minor> version number to match for strict interface check", cxxopts::value<std::string>())
-            ("h,tunnel-host", "Nabto device id for tunnel", cxxopts::value<std::string>())
-            ("t,tunnel", "Compact tunnel specification that can be specified multiple times: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
+            ("d,tunnel-device", "Nabto device id for tunnel", cxxopts::value<std::string>())
+            ("t,tunnel", "Tunnel specification, can be repeated to open multiple tunnel. Format: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory", cxxopts::value<std::string>())
             ("pair", "pair user to a local device")
             ("discover", "Show Nabto devices ids discovered on local network")
             ("certs", "Show available certificates")
             ("v,version", "Show version")
-            ("help", "Show help");
+            ("h,help", "Show help");
 
         options.parse(argc, argv);
 
@@ -461,7 +461,7 @@ int main(int argc, char** argv) {
         // rpc
 
         if (options.count("rpc-invoke-url")) {
-            if (!options.count("interface-definition")) {
+            if (!options.count("interface-def")) {
                 die("Missing RPC interface definition");
             }
             if (!options.count("cert-name")) {
@@ -494,8 +494,8 @@ int main(int argc, char** argv) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("tunnel-host")) {
-                die("Missing tunnel-host parameter");
+            if (!options.count("tunnel-device")) {
+                die("Missing tunnel-device parameter");
             }
             if (tunnelRunFromString(options)) {
                 nabtoShutdown();
