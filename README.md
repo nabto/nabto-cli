@@ -11,7 +11,7 @@ This application demonstrates how to use the Nabto Client SDK to exercise certif
 
 ## SDK installation
 
-To build the Nabto CLI Demo, first download the `Nabto SDK static libs` bundle from https://www.nabto.com/downloads.html.
+To build the Nabto CLI Demo, first download the `Nabto SDK libs` bundle from https://www.nabto.com/downloads.html.
 
 After download, install the libraries and header files into the `lib` and `include` directories, so you have the following structure:
 
@@ -49,12 +49,12 @@ To build the app, a C++11 compiler and CMake must be available and the Nabto Cli
 ```console
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -DCMAKE_INSTALL_PREFIX=../bin ..
 -- The C compiler identification is AppleClang 8.1.0.8020042
 -- The CXX compiler identification is AppleClang 8.1.0.8020042
 -- Check for working C compiler: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc
 [...]
-$ make -j 9
+$ make -j 9 install
 Scanning dependencies of target nabto-cli
 [ 66%] Building CXX object CMakeFiles/nabto-cli.dir/src/nabto_cli.cpp.o
 [ 66%] Building CXX object CMakeFiles/nabto-cli.dir/src/tunnel_manager.cpp.o
@@ -68,6 +68,13 @@ Usage:
   -c, --create-cert             Create self signed certificate
 [...]
 ```
+
+The example plain build target (e.g. `make` (without `install`)) configures the binary to look in the
+`lib`.
+
+The example install build target (e.g. `make install`) configures the binary to look for the Nabto
+SDK dynamic library next to the binary itself: It copies the SDK library and the `nabto-cli` binary
+to the location specified to CMake with `-DCMAKE_INSTALL_PREFIX=<path>`).
 
 ## Examples
 
@@ -87,7 +94,7 @@ Created self signed cert with fingerprint [53:84:b3:a6:f6:4a:c5:73:4e:5d:7a:3a:6
 
 ### RPC functions
 
-This example uses the appmyproduct-device-stub device as the device endpoint(https://github.com/nabto/appmyproduct-device-stub). This device uses the query definitions defined in the `unabto_queries.xml` file found at https://github.com/nabto/ionic-starter-nabto/blob/master/www/nabto/unabto_queries.xml.
+This example uses the [appmyproduct-device-stub device](https://github.com/nabto/appmyproduct-device-stub) as the device endpoint. This device uses the query definitions defined in the `unabto_queries.xml` file found at https://github.com/nabto/ionic-starter-nabto/blob/master/www/nabto/unabto_queries.xml.
 
 #### Strict interface checking
 When invoking RPC functionallity, Strict Interface Checking will ensure the interface definition between the device and the client is compatible. This is enabled with the `--strict-interface-check` argument, which will check the interface definition of the device with values provided by the `--interface-id` and `--interface-version` arguments
@@ -134,7 +141,15 @@ $ ./nabto-cli --cert-name nabto-user --interface-definition /path/to/unabto_quer
 ```
 ### Opening TCP tunnels
 
-A TCP tunnel is defined using the `--tunnel` argument, which takes a string of the format `<localPort>:<remoteHost>:<remotePort>`. This argument can be specified multiple times to open multiple tunnels. The string must always contain two colons and a remotePort number, whereas localPort and remoteHost can be ommitted to use an ephemeral port and localhost as the remoteHost.
+A TCP tunnel is defined using the `--tunnel` argument, which takes a string of the following format:
+
+```<localPort>:<remoteHost>:<remotePort>```.
+
+`<localPort>` is where the local tunnel (this application) will listen.
+
+`<remoteHost>` and `<remotPort>` is where the the remote tunnel endpoint connects to.
+
+The `<localPort>:<remoteHost>:<remotePort>` argument can be specified multiple times to open multiple tunnels. The string must always contain two colons and a `<remotePort>` number, whereas `<localPort>` and `<remoteHost>` can be ommitted to use an ephemeral local port and localhost as the `<remoteHost>`, respectively. If using an ephemeral port, the actual port being listened on can be read from the console.
 
 #### Open TCP tunnel using ephemeral port
 
