@@ -23,10 +23,10 @@ endif()
 
 SET(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp src/jsoncpp.cpp)
+add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp 3rdparty/jsoncpp.cpp)
 target_compile_features(nabto-cli PRIVATE cxx_range_for)
 
-include_directories(include)
+include_directories(include 3rdparty)
 target_link_libraries (nabto-cli ${NABTO_CORE_LIB})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
