@@ -479,6 +479,9 @@ int main(int argc, char** argv) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
+            if (!options.count("interface-def")) {
+                die("Missing RPC interface definition");
+            }
             if (rpcPair(options)) {
                 nabtoShutdown();
                 exit(0);
