@@ -16,7 +16,19 @@ find_file(NABTO_CORE_LIB_INSTALL
   NAMES "libnabto_client_api.so" "libnabto_client_api.dylib" "nabto_client_api.dll"
   PATHS "lib"
 )
-  
+
+option(MSVC_STATIC_RUNTIME "Build with static runtime libs (/MT)" ON)
+
+if (MSVC_STATIC_RUNTIME)
+  foreach(flag_var
+      CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+    if(${flag_var} MATCHES "/MD")
+      string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+    endif()
+  endforeach()
+endif ()
+
 if(NOT NABTO_CORE_LIB)
   message(FATAL_ERROR "Nabto lib not found - please download and install as per the README file")
 endif()
