@@ -5,6 +5,8 @@
 cmake_minimum_required(VERSION 3.2)
 project (nabto-cli)
 
+include(InstallRequiredSystemLibraries)
+
 # Find the library the linker needs to use.
 find_library(NABTO_CORE_LIB
   NAMES "nabto_client_api"
@@ -13,21 +15,9 @@ find_library(NABTO_CORE_LIB
 
 # Find the library we need to copy to the output folder such that the folder is selfcontained.
 find_file(NABTO_CORE_LIB_INSTALL
-  NAMES "libnabto_client_api.so" "libnabto_client_api.dylib" "nabto_client_api.dll"
+  NAMES "libnabto_client_api.so" "libnabto_client_api.dylib" "nabto_client_api.dll" "msvcp140.dll" "vcruntime140.dll"
   PATHS "lib"
-)
-
-option(MSVC_STATIC_RUNTIME "Build with static runtime libs (/MT)" ON)
-
-if (MSVC_STATIC_RUNTIME)
-  foreach(flag_var
-      CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-    if(${flag_var} MATCHES "/MD")
-      string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-    endif()
-  endforeach()
-endif ()
+  )
 
 if(NOT NABTO_CORE_LIB)
   message(FATAL_ERROR "Nabto lib not found - please download and install as per the README file")
@@ -47,7 +37,7 @@ endif()
 
 # install dependent shared library to make the installation folder selfcontained.
 install(FILES ${NABTO_CORE_LIB_INSTALL} DESTINATION .)
-
+install(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION .)
 install (TARGETS nabto-cli DESTINATION .)
 
 # On apple the rpath trick does not work as intended, fix it given the idea from the following blog post
