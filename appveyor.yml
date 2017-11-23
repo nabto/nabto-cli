@@ -6,11 +6,7 @@ build_script:
 
     7z x nabto-libs.zip
 
-    copy nabto-libs\win32-static\bin\nabto_client_api.dll lib\
-
-    copy nabto-libs\win32-static\bin\msvcp140.dll lib\
-
-    copy nabto-libs\win32-static\bin\vcruntime140.dll lib\
+    copy nabto-libs\win32-static\bin\*.dll lib\
 
     copy nabto-libs\win32-static\lib\nabto_client_api.lib lib\
 
