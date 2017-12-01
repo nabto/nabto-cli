@@ -30,7 +30,9 @@ script:
 - cmake --build . --target install
 - "./install/nabto-cli -v || exit 1"
 - otool -L install/nabto-cli
-- cmake --build . --target package
+- rm -rf nabto-cli-$TRAVIS_OS_NAME
+- cp -r install nabto-cli-$TRAVIS_OS_NAME
+- zip -r nabto-cli-$TRAVIS_OS_NAME.zip nabto-cli-$TRAVIS_OS_NAME
 deploy:
   provider: releases
   api_key:
