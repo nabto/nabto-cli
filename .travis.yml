@@ -29,7 +29,7 @@ script:
 - cmake -DCMAKE_INSTALL_PREFIX=install ..
 - cmake --build . --target install
 - "./install/nabto-cli -v || exit 1"
-- otool -L install/nabto-cli
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then otool -L install/nabto-cli; fi;
 - rm -rf nabto-cli-$TRAVIS_OS_NAME
 - cp -r install nabto-cli-$TRAVIS_OS_NAME
 - zip -r nabto-cli-$TRAVIS_OS_NAME.zip nabto-cli-$TRAVIS_OS_NAME
