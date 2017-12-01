@@ -55,6 +55,10 @@ if (APPLE)
 )
 endif()
 
+# Here be dragons! Cpack does the wrong thing on osx, the executable added 
+# to the zip file does not include the correct executable where the correct
+# install_name_tool magic has been applied.
+
 string(TOLOWER ${CMAKE_SYSTEM_NAME} osname)
 
 set(CPACK_GENERATOR "ZIP")
