@@ -102,7 +102,7 @@ When invoking RPC functionallity, Strict Interface Checking will ensure the inte
 
 #### Pair with device
 ```console
-./nabto-cli --cert-name nabto-user --pair --interface-definition /path/to/unabto_queries.xml \
+./nabto-cli --cert-name nabto-user --pair --interface-def /path/to/unabto_queries.xml \
 --strict-interface-check --interface-id 317aadf2-3137-474b-8ddb-fea437c424f4 --interface-version 1.0
 
 Choose a device for pairing:
@@ -124,7 +124,7 @@ Choose a device for pairing:
 
 #### Invoke Function
 ```console
-$ ./nabto-cli --cert-name nabto-user --interface-definition /path/to/unabto_queries.xml \
+$ ./nabto-cli --cert-name nabto-user --interface-def /path/to/unabto_queries.xml \
  --strict-interface-check --interface-id 317aadf2-3137-474b-8ddb-fea437c424f4 --interface-version 1.0 \
  --rpc-invoke-url nabto://xj00cmgr.nw7xqz.appmyproduct.com/get_public_device_info.json?
 {
@@ -143,7 +143,9 @@ $ ./nabto-cli --cert-name nabto-user --interface-definition /path/to/unabto_quer
 
 A TCP tunnel is defined using the `--tunnel` argument, which takes a string of the following format:
 
-```<localPort>:<remoteHost>:<remotePort>```.
+```
+<localPort>:<remoteHost>:<remotePort>
+```
 
 `<localPort>` is where the local tunnel (this application) will listen.
 
@@ -156,7 +158,7 @@ The `<localPort>:<remoteHost>:<remotePort>` argument can be specified multiple t
 Per default a TCP tunnel connects to a TCP socket on localhost on the remote peer, the only mandatory parameters are the remote nabto device id, the remote TCP port, and the certificate name. For instance, the following retrieves a page from an HTTP server on the remote peer:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
   --tunnel ::80
 State has changed for tunnel 0x9f2ede35 status CONNECTING (0)
 State has changed for tunnel 0x9f2ede35 status REMOTE_P2P (4)
@@ -180,7 +182,7 @@ $ curl -s http://127.0.0.1:46785
 Set the local TCP tunnel client end point to listen on port 12345:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
   --tunnel 12345::80
 State has changed for tunnel 0xbc496535 status CONNECTING (0)
 State has changed for tunnel 0xbc496535 status REMOTE_P2P (4)
@@ -199,7 +201,7 @@ $ curl -s http://127.0.0.1:12345
 Open a local TCP tunnel client end point on port 12345. The remote tunnel endpoint must connect to TCP port 80 on the host 192.168.1.123, reachable from the remote peer:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-host xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
   --tunnel 12345:192.168.1.123:80
 State has changed for tunnel 0x961aa635 status CONNECTING (0)
 State has changed for tunnel 0x961aa635 status REMOTE_P2P (4)
