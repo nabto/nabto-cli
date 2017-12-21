@@ -10,29 +10,54 @@ matrix:
         - ubuntu-toolchain-r-test
         packages:
         - g++-4.9
-    env:
-    - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+    script:
+      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - unzip nabto-libs.zip
+      - cp nabto-libs/linux64/include/nabto_client_api.h include/
+      - cp nabto-libs/linux64/lib/libnabto_client_api.so lib/
+      - mkdir -p build
+      - cd build
+      - CC=gcc-4.9 CXX=g++-4.9 cmake -DCMAKE_INSTALL_PREFIX=install ..
+      - cmake --build . --target install
+      - "./install/nabto-cli -v || exit 1"
+      - rm -rf nabto-cli-$TRAVIS_OS_NAME
+      - cp -r install nabto-cli-$TRAVIS_OS_NAME
+      - zip -r nabto-cli-$TRAVIS_OS_NAME.zip nabto-cli-$TRAVIS_OS_NAME
+
   - os: osx
     osx_image: xcode9.1
-before_install:
-- eval "${MATRIX_EVAL}"
-script:
-- wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
-- unzip nabto-libs.zip
-- cp nabto-libs/linux64/include/nabto_client_api.h include/
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cp nabto-libs/linux64/lib/libnabto_client_api.so
-  lib/; fi;
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cp nabto-libs/mac64/lib/libnabto_client_api.dylib
-  lib/; fi;
-- mkdir -p build
-- cd build
-- cmake -DCMAKE_INSTALL_PREFIX=install ..
-- cmake --build . --target install
-- "./install/nabto-cli -v || exit 1"
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then otool -L install/nabto-cli; fi;
-- rm -rf nabto-cli-$TRAVIS_OS_NAME
-- cp -r install nabto-cli-$TRAVIS_OS_NAME
-- zip -r nabto-cli-$TRAVIS_OS_NAME.zip nabto-cli-$TRAVIS_OS_NAME
+    script:
+      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - unzip nabto-libs.zip
+      - cp nabto-libs/linux64/include/nabto_client_api.h include/
+      - cp nabto-libs/mac64/lib/libnabto_client_api.dylib lib/
+      - mkdir -p build
+      - cd build
+      - cmake -DCMAKE_INSTALL_PREFIX=install ..
+      - cmake --build . --target install
+      - "./install/nabto-cli -v || exit 1"
+      - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then otool -L install/nabto-cli; fi;
+      - rm -rf nabto-cli-$TRAVIS_OS_NAME
+      - cp -r install nabto-cli-$TRAVIS_OS_NAME
+      - zip -r nabto-cli-$TRAVIS_OS_NAME.zip nabto-cli-$TRAVIS_OS_NAME
+  - os: linux
+    dist: trusty
+    language: c++
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        packages:
+        - g++-4.9
+    script:
+      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - unzip nabto-libs.zip
+      - cp nabto-libs/linux64/include/nabto_client_api.h include/
+      - cp nabto-libs/linux64/lib/libnabto_client_api.so lib/
+      - mkdir -p build
+      - cd build
+      - CC=gcc-4.9 CXX=g++-4.9 cmake ../simplebuild
+      - cmake --build .
 deploy:
   provider: releases
   api_key:

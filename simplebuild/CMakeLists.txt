@@ -1,5 +1,6 @@
-## This is an example on how simple the nabto-cli app can be built if
-## it should not fix dylibs etc on several platforms.
+## This is an example on how simple the nabto-cli app can be built for
+## linux. For a crossplatform build file with dynamic library magic
+## see ../CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.2)
 project(nabto-cli)

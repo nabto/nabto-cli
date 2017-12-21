@@ -2,6 +2,8 @@
 # Copyright (C) 2017 Nabto - All Rights Reserved.
 # 
 
+# For a simple build file which only targets linux see simplebuild/CMakeLists.txt
+
 cmake_minimum_required(VERSION 3.2)
 project (nabto-cli)
 
