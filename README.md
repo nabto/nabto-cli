@@ -76,6 +76,13 @@ The example install build target (e.g. `make install`) configures the binary to 
 SDK dynamic library next to the binary itself: It copies the SDK library and the `nabto-cli` binary
 to the location specified to CMake with `-DCMAKE_INSTALL_PREFIX=<path>`).
 
+### Simple build file
+
+There is a minimal `CMakeLists.txt` build file in the simplebuild
+folder. The purpose of that file is to show the minimum required
+effort to build the nabto cli, this can be used as an example for your
+own projects which integrates the `nabto_client_api`.
+
 ## Examples
 
 It is assumed that the fingerprint of an available certificate (see first example) is added to the ACL of the target device. See section 8 in [TEN036 "Security in Nabto Solutions"](https://www.nabto.com/downloads/docs/TEN036%20Security%20in%20Nabto%20Solutions.pdf) for further details.
