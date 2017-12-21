@@ -5,7 +5,7 @@
 #include "tunnel_manager.hpp"
 #include "nabto_client_api.h"
 #include "cxxopts.hpp"
-#include "json.h"
+#include <json/json.h>
 #include "json_helper.hpp"
 
 #include <iostream>
