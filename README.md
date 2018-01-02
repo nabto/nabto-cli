@@ -44,7 +44,9 @@ The lib folder should contain the following files:
 
 ## Building and running
 
-To build the app, a C++11 compiler and CMake must be available and the Nabto Client SDK installed as described above:
+To build the app, a C++11 compiler and CMake must be available and the
+Nabto Client SDK installed as described above. The software is tested
+to compile with gcc 4.9, VS 2017 and recent clang versions.
 
 ```console
 $ mkdir build
