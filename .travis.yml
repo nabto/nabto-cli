@@ -11,7 +11,7 @@ matrix:
         packages:
         - g++-4.9
     script:
-      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - wget -N https://downloads.nabto.com/assets/nabto-libs/4.1.1/nabto-libs.zip
       - unzip nabto-libs.zip
       - cp nabto-libs/linux64/include/nabto_client_api.h include/
       - cp nabto-libs/linux64/lib/libnabto_client_api.so lib/
@@ -27,7 +27,7 @@ matrix:
   - os: osx
     osx_image: xcode9.1
     script:
-      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - wget -N https://downloads.nabto.com/assets/nabto-libs/4.1.1/nabto-libs.zip
       - unzip nabto-libs.zip
       - cp nabto-libs/linux64/include/nabto_client_api.h include/
       - cp nabto-libs/mac64/lib/libnabto_client_api.dylib lib/
@@ -50,7 +50,7 @@ matrix:
         packages:
         - g++-4.9
     script:
-      - wget -N https://www.nabto.com/downloads/nabto-libs/4.1.1/nabto-libs.zip
+      - wget -N https://downloads.nabto.com/assets/nabto-libs/4.1.1/nabto-libs.zip
       - unzip nabto-libs.zip
       - cp nabto-libs/linux64/include/nabto_client_api.h include/
       - cp nabto-libs/linux64/lib/libnabto_client_api.so lib/
