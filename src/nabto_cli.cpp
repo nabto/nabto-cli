@@ -54,6 +54,41 @@ bool init(cxxopts::Options& options) {
 ////////////////////////////////////////////////////////////////////////////////
 // cert
 
+unsigned char parse_hex(char c)
+{
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    die("Invalid hex character.");
+}
+
+std::vector<char> parse_hex_string(const std::string& hex) {
+    std::vector<char> result;
+
+    for (std::size_t i = 0; i < hex.size() / 2; i++) {
+        char l = 16 * parse_hex(hex[2 * i]) + parse_hex(hex[2 * i + 1]);
+        result.push_back(l);
+    }
+    return result;
+}
+
+bool pskSetKey(nabto_handle_t session, const std::string& host, const std::string& keyId, const std::string& psk) {
+    if (keyId.size() != 32) {
+        std::cout << "local-connection-psk-id should be 32 hex characters" << std::endl;
+        return false;
+    }
+    if (psk.size() != 32) {
+        std::cout << "local-connection-psk should be 32 hex characters" << std::endl;
+        return false;
+    }
+
+    std::vector<char> kId = parse_hex_string(keyId);
+    std::vector<char> k = parse_hex_string(psk);
+
+    nabtoSetLocalConnectionPsk(session, host.c_str(), kId.data(), k.data());
+}
+
+
 bool certCreate(const std::string& commonName, const std::string& password) {
     if ( password.compare("not-so-secret") == 0 ){
         std::cout << "Warning: creating certificate with default password for user: " << commonName << std::endl;
@@ -122,6 +157,9 @@ bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
     }
     return false;
 }
+
+ 
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // rpc
@@ -316,6 +354,14 @@ bool tunnelRunFromString(cxxopts::Options& options) {
     if (!certOpenSession(session, options)) {
         return false;
     }
+
+    if (options.count("local-connection-psk-id") && options.count("local-connection-psk")) {
+        std::string pskId = options["local-connection-psk-id"].as<std::string>();
+        std::string psk = options["local-connection-psk"].as<std::string>();
+        std::string host = options["tunnel-device"].as<std::string>();
+        pskSetKey(session, host, pskId, psk);
+    }
+    
     tunnelManager_.reset(new TunnelManager(session));
 
     for (auto tunnelStr : options["tunnel"].as<std::vector<std::string> >()) {
@@ -397,6 +443,8 @@ int main(int argc, char** argv) {
             ("n,cert-name", "Certificate name. ex.: nabto-user", cxxopts::value<std::string>())
             ("a,password", "Password for private key. ex.: pass123", cxxopts::value<std::string>()->default_value("not-so-secret"))
             ("bs-auth-json", "JSON doc to pass to basestation for authentication. ex.: {\"key\": \"secretKey\"}", cxxopts::value<std::string>())
+            ("local-connection-psk-id", "16 byte hex encoded PSK id to use for PSK on local psk connection (32 hex xhars)")
+            ("local-connection-psk", "16 byte hex encoded PSK to use for local psk connection (32 hex chars)")
             ("q,rpc-invoke-url", "URL for RPC query. ex.: nabto://device.nabto.com/get_public_device_info.json?", cxxopts::value<std::string>())
             ("i,interface-def", "Path to unabto_queries.xml file with RPC interface definition. ex.: /path/to/unabto_queries.xml", cxxopts::value<std::string>())
             ("strict-interface-check", "Use strict interface check for all RPC calls")
@@ -457,6 +505,14 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (options.count("local-connection-psk-id") && !options.count("local-connection-psk")) {
+            die("missing local-connection-psk option");
+        }
+
+        if (options.count("local-connection-psk") && !options.count("local-connection-psk-id")) {
+            die("missing local-connection-psk-id option");
+        }
+        
         ////////////////////////////////////////////////////////////////////////////////
         // rpc
 
