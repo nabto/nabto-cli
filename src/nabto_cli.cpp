@@ -60,6 +60,7 @@ unsigned char parseHex(char c)
     if ('A' <= c && c <= 'F') return c - 'A' + 10;
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
     die("Invalid hex character in input");
+    return false;
 }
 
 bool parseHexString(std::vector<char>& parsed, const std::string& text, int offset) {
