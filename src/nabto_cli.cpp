@@ -54,38 +54,45 @@ bool init(cxxopts::Options& options) {
 ////////////////////////////////////////////////////////////////////////////////
 // cert
 
-unsigned char parse_hex(char c)
+unsigned char parseHex(char c)
 {
     if ('0' <= c && c <= '9') return c - '0';
     if ('A' <= c && c <= 'F') return c - 'A' + 10;
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
-    die("Invalid hex character.");
+    ss << "Invalid hex character in input";
 }
 
-std::vector<char> parse_hex_string(const std::string& hex) {
-    std::vector<char> result;
-
-    for (std::size_t i = 0; i < hex.size() / 2; i++) {
-        char l = 16 * parse_hex(hex[2 * i]) + parse_hex(hex[2 * i + 1]);
-        result.push_back(l);
+bool parseHexString(std::vector<char>& parsed, const std::string& text, int offset) {
+    for (std::size_t i = 0; i < (text.size() + offset-2) / offset; i++) {
+        char l = 16 * parseHex(text[offset * i]) + parseHex(text[offset * i + 1]);
+        parsed.push_back(l);
     }
-    return result;
+    return true;
+}
+
+bool pskParseHex(std::vector<char>& parsed, const std::string& text, int length) {
+    int offset;
+    if (text.size() == length * 2) {
+        offset = 2;
+    } else if (text.size() == length * 3 - 1) {
+        offset = 3;
+    } else {
+        std::cout << "hex input should be " << length << " hex characters" << std::endl;
+        return false;
+    }
+    return parseHexString(parsed, text, offset);
 }
 
 bool pskSetKey(nabto_handle_t session, const std::string& host, const std::string& keyId, const std::string& psk) {
-    if (keyId.size() != 32) {
-        std::cout << "local-connection-psk-id should be 32 hex characters" << std::endl;
+    std::vector<char> keyIdBytes;
+    if (!pskParseHex(keyIdBytes, keyId, 16)) {
         return false;
     }
-    if (psk.size() != 32) {
-        std::cout << "local-connection-psk should be 32 hex characters" << std::endl;
+    std::vector<char> keyBytes;
+    if (!pskParseHex(keyBytes, psk, 16)) {
         return false;
     }
-
-    std::vector<char> kId = parse_hex_string(keyId);
-    std::vector<char> k = parse_hex_string(psk);
-
-    nabtoSetLocalConnectionPsk(session, host.c_str(), kId.data(), k.data());
+    return nabtoSetLocalConnectionPsk(session, host.c_str(), keyIdBytes.data(), keyBytes.data()) == NABTO_OK;
 }
 
 
@@ -359,7 +366,9 @@ bool tunnelRunFromString(cxxopts::Options& options) {
         std::string pskId = options["local-connection-psk-id"].as<std::string>();
         std::string psk = options["local-connection-psk"].as<std::string>();
         std::string host = options["tunnel-device"].as<std::string>();
-        pskSetKey(session, host, pskId, psk);
+        if (!pskSetKey(session, host, pskId, psk)) {
+            die("Could not set key");
+        }
     }
     
     tunnelManager_.reset(new TunnelManager(session));
