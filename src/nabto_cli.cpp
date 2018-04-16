@@ -59,7 +59,7 @@ unsigned char parseHex(char c)
     if ('0' <= c && c <= '9') return c - '0';
     if ('A' <= c && c <= 'F') return c - 'A' + 10;
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
-    ss << "Invalid hex character in input";
+    die("Invalid hex character in input");
 }
 
 bool parseHexString(std::vector<char>& parsed, const std::string& text, int offset) {
