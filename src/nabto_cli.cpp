@@ -96,6 +96,17 @@ bool pskSetKey(nabto_handle_t session, const std::string& host, const std::strin
     return nabtoSetLocalConnectionPsk(session, host.c_str(), keyIdBytes.data(), keyBytes.data()) == NABTO_OK;
 }
 
+void setPsk(nabto_handle_t session, cxxopts::Options& options) {
+    if (options.count("local-connection-psk-id") && options.count("local-connection-psk") && options.count("device")) {
+        std::string pskId = options["local-connection-psk-id"].as<std::string>();
+        std::string psk = options["local-connection-psk"].as<std::string>();
+        std::string host = options["device"].as<std::string>();
+        if (!pskSetKey(session, host, pskId, psk)) {
+            die("Could not set key");
+        }
+    }
+}
+
 
 bool certCreate(const std::string& commonName, const std::string& password) {
     if ( password.compare("not-so-secret") == 0 ){
@@ -363,15 +374,8 @@ bool tunnelRunFromString(cxxopts::Options& options) {
         return false;
     }
 
-    if (options.count("local-connection-psk-id") && options.count("local-connection-psk")) {
-        std::string pskId = options["local-connection-psk-id"].as<std::string>();
-        std::string psk = options["local-connection-psk"].as<std::string>();
-        std::string host = options["tunnel-device"].as<std::string>();
-        if (!pskSetKey(session, host, pskId, psk)) {
-            die("Could not set key");
-        }
-    }
-    
+    setPsk(session, options);
+
     tunnelManager_.reset(new TunnelManager(session));
 
     for (auto tunnelStr : options["tunnel"].as<std::vector<std::string> >()) {
@@ -395,7 +399,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
             remoteHost = std::string(tunnelStr,first+1,second-first-1);
             remotePort = std::stoi(std::string(tunnelStr,second+1));
         }
-        if (!tunnelManager_->open(localPort, options["tunnel-device"].as<std::string>(), remoteHost, remotePort)) {
+        if (!tunnelManager_->open(localPort, options["device"].as<std::string>(), remoteHost, remotePort)) {
             std::cout << "Failed to open tunnel: " << tunnelStr << std::endl;
             return false;
         }
@@ -460,7 +464,7 @@ int main(int argc, char** argv) {
             ("strict-interface-check", "Use strict interface check for all RPC calls")
             ("interface-id", "interface ID to match for strict interface check. ex.: 317aadf2-3137-474b-8ddb-fea437c424f4", cxxopts::value<std::string>())
             ("interface-version", "<major>.<minor> version number to match for strict interface check. ex.: 1.0", cxxopts::value<std::string>())
-            ("d,tunnel-device", "Nabto device ID for tunnel. ex.: device.nabto.com", cxxopts::value<std::string>())
+            ("d,device", "Nabto device ID for tunnel (and psk), e.g. device.nabto.com", cxxopts::value<std::string>())
             ("t,tunnel", "Tunnel specification, can be repeated to open multiple tunnel. Format: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory. ex.: /path/to/dir", cxxopts::value<std::string>())
             ("pair", "pair user to a local device")
@@ -563,8 +567,8 @@ int main(int argc, char** argv) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("tunnel-device")) {
-                die("Missing tunnel-device parameter");
+            if (!options.count("device")) {
+                die("Missing device parameter");
             }
             if (tunnelRunFromString(options)) {
                 nabtoShutdown();
