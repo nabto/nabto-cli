@@ -106,7 +106,9 @@ Created self signed cert with fingerprint [53:84:b3:a6:f6:4a:c5:73:4e:5d:7a:3a:6
 This example uses the [appmyproduct-device-stub device](https://github.com/nabto/appmyproduct-device-stub) as the device endpoint. This device uses the query definitions defined in the `unabto_queries.xml` file found at https://github.com/nabto/ionic-starter-nabto/blob/master/www/nabto/unabto_queries.xml.
 
 #### Strict interface checking
-When invoking RPC functionallity, Strict Interface Checking will ensure the interface definition between the device and the client is compatible. This is enabled with the `--strict-interface-check` argument, which will check the interface definition of the device with values provided by the `--interface-id` and `--interface-version` arguments
+When invoking RPC functionallity, Strict Interface Checking will ensure the interface definition between the device and the client is compatible. This is enabled with the `--strict-interface-check` argument, which will check the interface definition of the device with values provided by the `--interface-id` and `--interface-version` arguments.
+
+See https://github.com/nabto/ionic-starter-nabto#rpc-interface-configuration for more information about convention based interface checking at the application level.
 
 
 #### Pair with device
