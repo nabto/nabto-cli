@@ -269,6 +269,7 @@ bool rpcInvoke(cxxopts::Options& options) {
     if (!certOpenSession(session, options)) {
         return false;
     }
+    setPsk(session, options);
     if (!rpcSetInterface(session, options["interface-def"].as<std::string>())) {
         return false;
     }
@@ -519,12 +520,12 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (options.count("local-connection-psk-id") && !options.count("local-connection-psk")) {
-            die("missing local-connection-psk option");
+        if (options.count("local-connection-psk-id") && (!options.count("local-connection-psk") || !options.count("device"))) {
+            die("missing local-connection-psk or device option");
         }
 
-        if (options.count("local-connection-psk") && !options.count("local-connection-psk-id")) {
-            die("missing local-connection-psk-id option");
+        if (options.count("local-connection-psk") && (!options.count("local-connection-psk-id") || !options.count("local-connection-psk"))) {
+            die("missing local-connection-psk-id or device option");
         }
         
         ////////////////////////////////////////////////////////////////////////////////
