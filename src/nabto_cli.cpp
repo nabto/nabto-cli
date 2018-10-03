@@ -54,6 +54,60 @@ bool init(cxxopts::Options& options) {
 ////////////////////////////////////////////////////////////////////////////////
 // cert
 
+unsigned char parseHex(char c)
+{
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    die("Invalid hex character in input");
+    return false;
+}
+
+bool parseHexString(std::vector<char>& parsed, const std::string& text, int offset) {
+    for (std::size_t i = 0; i < (text.size() + offset-2) / offset; i++) {
+        char l = 16 * parseHex(text[offset * i]) + parseHex(text[offset * i + 1]);
+        parsed.push_back(l);
+    }
+    return true;
+}
+
+bool pskParseHex(std::vector<char>& parsed, const std::string& text, int length) {
+    int offset;
+    if (text.size() == length * 2) {
+        offset = 2;
+    } else if (text.size() == length * 3 - 1) {
+        offset = 3;
+    } else {
+        std::cout << "hex input should be " << length << " hex characters" << std::endl;
+        return false;
+    }
+    return parseHexString(parsed, text, offset);
+}
+
+bool pskSetKey(nabto_handle_t session, const std::string& host, const std::string& keyId, const std::string& psk) {
+    std::vector<char> keyIdBytes;
+    if (!pskParseHex(keyIdBytes, keyId, 16)) {
+        return false;
+    }
+    std::vector<char> keyBytes;
+    if (!pskParseHex(keyBytes, psk, 16)) {
+        return false;
+    }
+    return nabtoSetLocalConnectionPsk(session, host.c_str(), keyIdBytes.data(), keyBytes.data()) == NABTO_OK;
+}
+
+void setPsk(nabto_handle_t session, cxxopts::Options& options) {
+    if (options.count("local-connection-psk-id") && options.count("local-connection-psk") && options.count("device")) {
+        std::string pskId = options["local-connection-psk-id"].as<std::string>();
+        std::string psk = options["local-connection-psk"].as<std::string>();
+        std::string host = options["device"].as<std::string>();
+        if (!pskSetKey(session, host, pskId, psk)) {
+            die("Could not set key");
+        }
+    }
+}
+
+
 bool certCreate(const std::string& commonName, const std::string& password) {
     if ( password.compare("not-so-secret") == 0 ){
         std::cout << "Warning: creating certificate with default password for user: " << commonName << std::endl;
@@ -122,6 +176,9 @@ bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
     }
     return false;
 }
+
+ 
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // rpc
@@ -212,6 +269,7 @@ bool rpcInvoke(cxxopts::Options& options) {
     if (!certOpenSession(session, options)) {
         return false;
     }
+    setPsk(session, options);
     if (!rpcSetInterface(session, options["interface-def"].as<std::string>())) {
         return false;
     }
@@ -316,6 +374,9 @@ bool tunnelRunFromString(cxxopts::Options& options) {
     if (!certOpenSession(session, options)) {
         return false;
     }
+
+    setPsk(session, options);
+
     tunnelManager_.reset(new TunnelManager(session));
 
     for (auto tunnelStr : options["tunnel"].as<std::vector<std::string> >()) {
@@ -339,7 +400,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
             remoteHost = std::string(tunnelStr,first+1,second-first-1);
             remotePort = std::stoi(std::string(tunnelStr,second+1));
         }
-        if (!tunnelManager_->open(localPort, options["tunnel-device"].as<std::string>(), remoteHost, remotePort)) {
+        if (!tunnelManager_->open(localPort, options["device"].as<std::string>(), remoteHost, remotePort)) {
             std::cout << "Failed to open tunnel: " << tunnelStr << std::endl;
             return false;
         }
@@ -397,12 +458,14 @@ int main(int argc, char** argv) {
             ("n,cert-name", "Certificate name. ex.: nabto-user", cxxopts::value<std::string>())
             ("a,password", "Password for private key. ex.: pass123", cxxopts::value<std::string>()->default_value("not-so-secret"))
             ("bs-auth-json", "JSON doc to pass to basestation for authentication. ex.: {\"key\": \"secretKey\"}", cxxopts::value<std::string>())
+            ("local-connection-psk-id", "16 byte hex encoded PSK id to use for PSK on local psk connection (32 hex chars)", cxxopts::value<std::string>())
+            ("local-connection-psk", "16 byte hex encoded PSK to use for local psk connection (32 hex chars)", cxxopts::value<std::string>())
             ("q,rpc-invoke-url", "URL for RPC query. ex.: nabto://device.nabto.com/get_public_device_info.json?", cxxopts::value<std::string>())
             ("i,interface-def", "Path to unabto_queries.xml file with RPC interface definition. ex.: /path/to/unabto_queries.xml", cxxopts::value<std::string>())
             ("strict-interface-check", "Use strict interface check for all RPC calls")
             ("interface-id", "interface ID to match for strict interface check. ex.: 317aadf2-3137-474b-8ddb-fea437c424f4", cxxopts::value<std::string>())
             ("interface-version", "<major>.<minor> version number to match for strict interface check. ex.: 1.0", cxxopts::value<std::string>())
-            ("d,tunnel-device", "Nabto device ID for tunnel. ex.: device.nabto.com", cxxopts::value<std::string>())
+            ("d,device", "Nabto device ID for tunnel (and psk), e.g. device.nabto.com", cxxopts::value<std::string>())
             ("t,tunnel", "Tunnel specification, can be repeated to open multiple tunnel. Format: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
             ("H,home-dir", "Override default Nabto home directory. ex.: /path/to/dir", cxxopts::value<std::string>())
             ("pair", "pair user to a local device")
@@ -457,6 +520,14 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (options.count("local-connection-psk-id") && (!options.count("local-connection-psk") || !options.count("device"))) {
+            die("missing local-connection-psk or device option");
+        }
+
+        if (options.count("local-connection-psk") && (!options.count("local-connection-psk-id") || !options.count("local-connection-psk"))) {
+            die("missing local-connection-psk-id or device option");
+        }
+        
         ////////////////////////////////////////////////////////////////////////////////
         // rpc
 
@@ -497,8 +568,8 @@ int main(int argc, char** argv) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("tunnel-device")) {
-                die("Missing tunnel-device parameter");
+            if (!options.count("device")) {
+                die("Missing device parameter");
             }
             if (tunnelRunFromString(options)) {
                 nabtoShutdown();
