@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <thread>
 
 #ifndef WIN32
 #include <signal.h>
@@ -25,6 +26,7 @@ void sigHandler(int signo) {
     if (signo == SIGINT && tunnelManager_) {
         tunnelManager_->stop();
     }
+    exit(0);
 #endif
 }
 
@@ -405,6 +407,70 @@ bool tunnelRunFromString(cxxopts::Options& options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// stream
+
+std::mutex iomutex_;
+
+bool streamReadFunc(nabto_handle_t session, cxxopts::Options& options) {
+    nabto_stream_t stream;
+    char* response;
+    size_t actual = 0; /* actual size (in bytes) of response */
+    nabto_status_t status;
+
+    if (!certOpenSession(session, options)) {
+        return false;
+    }
+    const char* host(options["tunnel-device"].as<std::string>().c_str());
+    status = nabtoStreamOpen(&stream, session, host);
+    if (status == NABTO_OK) {
+        std::lock_guard<std::mutex> lock(iomutex_);
+        std::cout << "nabtoStreamOpen() succeeded, stream = " << stream <<  std::endl;
+        
+    } else {
+        std::lock_guard<std::mutex> lock(iomutex_);
+        std::cout << "nabtoStreamOpen() failed with status " << status << ": " << nabtoStatusStr(status) << std::endl;
+        nabtoCloseSession(session);
+        return false;
+    }
+
+    while (true) {
+        status = nabtoStreamRead(stream, &response, &actual);
+        std::cout << "got " << actual << " bytes with status " << status << std::endl;
+        if (status == NABTO_OK) {
+            std::string responseStr(response, actual);
+            std::cout << responseStr << std::endl;
+        } else {
+            break;
+        }
+    }
+    
+    std::lock_guard<std::mutex> lock(iomutex_);
+    if (status == NABTO_STREAM_CLOSED) {
+        std::cout << "Stream " << stream << " closed cleanly" << std::endl;
+        return true;
+    } else {
+        std::cout << "Stream read failed with status " << nabtoStatusStr(status) << std::endl;
+        return false;
+    }
+
+}
+
+bool streamRead(cxxopts::Options& options) {
+    nabto_handle_t session;
+    return streamReadFunc(session, options);
+#if 0
+    for (int i=0; i<1; i++) {
+        std::thread t([&]() {
+                streamReadFunc(session, options);
+            });
+        t.detach();
+    }
+    return true;
+#endif
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // show stuff
 
 bool showLocalDevices() {
@@ -451,7 +517,7 @@ int main(int argc, char** argv) {
         options.add_options()
             ("c,create-cert", "Create self signed certificate")
             ("n,cert-name", "Certificate name. ex.: nabto-user", cxxopts::value<std::string>())
-            ("a,password", "Password for private key. ex.: pass123", cxxopts::value<std::string>()->default_value("not-so-secret"))
+            ("a,password", "Password for encrypting private key", cxxopts::value<std::string>()->default_value("not-so-secret"))
             ("bs-auth-json", "JSON doc to pass to basestation for authentication. ex.: {\"key\": \"secretKey\"}", cxxopts::value<std::string>())
             ("local-connection-psk-id", "16 byte hex encoded PSK id to use for PSK on local psk connection (32 hex xhars)", cxxopts::value<std::string>())
             ("local-connection-psk", "16 byte hex encoded PSK to use for local psk connection (32 hex chars)", cxxopts::value<std::string>())
@@ -460,8 +526,9 @@ int main(int argc, char** argv) {
             ("strict-interface-check", "Use strict interface check for all RPC calls")
             ("interface-id", "interface ID to match for strict interface check. ex.: 317aadf2-3137-474b-8ddb-fea437c424f4", cxxopts::value<std::string>())
             ("interface-version", "<major>.<minor> version number to match for strict interface check. ex.: 1.0", cxxopts::value<std::string>())
-            ("d,tunnel-device", "Nabto device ID for tunnel. ex.: device.nabto.com", cxxopts::value<std::string>())
+            ("d,tunnel-device", "Nabto device ID for tunnel (and more), e.g. device.nabto.com", cxxopts::value<std::string>())
             ("t,tunnel", "Tunnel specification, can be repeated to open multiple tunnel. Format: <local tcp port>:<remote tcp host>:<remote tcp port>", cxxopts::value<std::vector<std::string>>())
+            ("stream-read", "Open stream to device specified with -d, read and dump all received data")
             ("H,home-dir", "Override default Nabto home directory. ex.: /path/to/dir", cxxopts::value<std::string>())
             ("pair", "pair user to a local device")
             ("discover", "Show Nabto devices ids discovered on local network")
@@ -573,6 +640,25 @@ int main(int argc, char** argv) {
                 die("Could not start tunnel");
             }
         }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // stream
+        
+        if (options.count("stream-read")) {
+            if (!options.count("cert-name")) {
+                die("Missing cert-name parameter");
+            }
+            if (!options.count("tunnel-device")) {
+                die("Missing tunnel-device parameter");
+            }
+            if (streamRead(options)) {
+                nabtoShutdown();
+                exit(0);
+            } else {
+                die("Could not start stream read");
+            }
+        }
+
 
         help(options);
         
