@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.2)
 project(nabto-cli)
 set (CMAKE_CXX_STANDARD 11)
-
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set(root_dir ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set(nabto_client_api_lib ${root_dir}/lib/libnabto_client_api.so)
