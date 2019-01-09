@@ -2,7 +2,7 @@ version: 1.0.{build}
 image: Visual Studio 2017
 build_script:
 - cmd: >-
-    curl https://downloads.nabto.com/assets/nabto-libs/4.3.0/nabto-libs.zip -o nabto-libs.zip
+    curl https://downloads.nabto.com/assets/nabto-libs/4.4.0/nabto-libs.zip -o nabto-libs.zip
 
     7z x nabto-libs.zip
 
