@@ -27,6 +27,7 @@ void sigHandler(int signo) {
     if (signo == SIGINT && tunnelManager_) {
         tunnelManager_->stop();
     }
+    nabtoShutdown();
     exit(0);
 #endif
 }
@@ -87,9 +88,15 @@ bool pskParseHex(std::vector<char>& parsed, const std::string& text, int length)
     return parseHexString(parsed, text, offset);
 }
 
-bool pskSetKey(nabto_handle_t session, const std::string& host, const std::string& keyId, const std::string& psk) {
+bool pskSetKeyIfPresent(nabto_handle_t session, const std::string& host, cxxopts::Options& options) {
+    if (!(options.count("local-connection-psk-id") && options.count("local-connection-psk"))) {
+        return true;
+    }
+    std::string pskId = options["local-connection-psk-id"].as<std::string>();
+    std::string psk = options["local-connection-psk"].as<std::string>();
+    
     std::vector<char> keyIdBytes;
-    if (!pskParseHex(keyIdBytes, keyId, 16)) {
+    if (!pskParseHex(keyIdBytes, pskId, 16)) {
         return false;
     }
     std::vector<char> keyBytes;
@@ -227,6 +234,7 @@ bool checkInterface(nabto_handle_t session, std::string device, cxxopts::Options
     interfaceString.append(device);
     interfaceString.append("/get_interface_info.json");
     char* json;
+
     nabto_status status = nabtoRpcInvoke(session, interfaceString.c_str(), &json);
     if (status == NABTO_OK) {
         Json::Value jsonDoc;
@@ -256,6 +264,18 @@ bool checkInterface(nabto_handle_t session, std::string device, cxxopts::Options
     return true;
 }
 
+bool extractHostFromUrl(const std::string& url, std::string& host) {
+    std::string prefix = "nabto://";
+    size_t hostStart = prefix.length();
+    size_t slash = url.find("/", hostStart);
+    if (slash != std::string::npos) {
+        host = std::string(&url[hostStart],slash-hostStart);
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool rpcInvoke(cxxopts::Options& options) {
     nabto_handle_t session;
     if (!certOpenSession(session, options)) {
@@ -264,13 +284,20 @@ bool rpcInvoke(cxxopts::Options& options) {
     if (!rpcSetInterface(session, options["interface-def"].as<std::string>())) {
         return false;
     }
-    if(options.count("strict-interface-check")) {
-        size_t slash = options["rpc-invoke-url"].as<std::string>().find("/", 8);
-        if (!checkInterface(session, std::string(&options["rpc-invoke-url"].as<std::string>()[8],slash-8), options)) {
-            std::cout << "ERROR: strict interface check failed" << std::endl;
-            return false;
-        }
+    std::string host;
+    if (!extractHostFromUrl(options["rpc-invoke-url"].as<std::string>(), host)) {
+        std::cout << "ERROR: bad url" << std::endl;
+        return false;
     }
+    if (options.count("strict-interface-check") && !checkInterface(session, host, options)) {
+        std::cout << "ERROR: strict interface check failed" << std::endl;
+        return false;
+    }
+
+    if (!pskSetKeyIfPresent(session, host, options)) {
+        die("Could not set PSK");
+    }
+
     char* json;
     nabto_status status = nabtoRpcInvoke(session, options["rpc-invoke-url"].as<std::string>().c_str(), &json);
     if (status == NABTO_OK || status == NABTO_FAILED_WITH_JSON_MESSAGE) {
@@ -366,13 +393,8 @@ bool tunnelRunFromString(cxxopts::Options& options) {
         return false;
     }
 
-    if (options.count("local-connection-psk-id") && options.count("local-connection-psk")) {
-        std::string pskId = options["local-connection-psk-id"].as<std::string>();
-        std::string psk = options["local-connection-psk"].as<std::string>();
-        std::string host = options["tunnel-device"].as<std::string>();
-        if (!pskSetKey(session, host, pskId, psk)) {
-            die("Could not set key");
-        }
+    if (!pskSetKeyIfPresent(session, options["tunnel-device"].as<std::string>(), options)) {
+        die("Could not set PSK");
     }
     
     tunnelManager_.reset(new TunnelManager(session));
@@ -602,8 +624,12 @@ int main(int argc, char** argv) {
                 die("Missing cert-name parameter");
             }
             if (rpcInvoke(options)) {
-                nabtoShutdown();
-                exit(0);
+                if (!options.count("tunnel")) {
+                    nabtoShutdown();
+                    exit(0);
+                } else {
+                    // next, start any tunnels
+                }
             } else {
                 die("RPC Invoke failed");
             }
