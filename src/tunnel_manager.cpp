@@ -24,7 +24,7 @@ bool TunnelManager::open(uint16_t localPort,
     nabto_status_t st = nabtoTunnelOpenTcp(&tunnel, session_, localPort, deviceId.c_str(), remoteHost.c_str(), remotePort);
     if (st == NABTO_OK) {
         tunnels_.push_back(tunnel);
-        tunnelStates_[tunnel] = NTCS_CLOSED;
+        tunnelStates_[tunnel] = NTCS_UNKNOWN;
         return true;
     } else {
         std::cout << "Could not open tunnel to " << deviceId << ", tunnel open failed with status " << st << std::endl;
