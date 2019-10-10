@@ -94,7 +94,7 @@ bool pskSetKeyIfPresent(nabto_handle_t session, const std::string& host, cxxopts
     }
     std::string pskId = options["local-connection-psk-id"].as<std::string>();
     std::string psk = options["local-connection-psk"].as<std::string>();
-    
+
     std::vector<char> keyIdBytes;
     if (!pskParseHex(keyIdBytes, pskId, 16)) {
         return false;
@@ -106,6 +106,21 @@ bool pskSetKeyIfPresent(nabto_handle_t session, const std::string& host, cxxopts
     return nabtoSetLocalConnectionPsk(session, host.c_str(), keyIdBytes.data(), keyBytes.data()) == NABTO_OK;
 }
 
+bool getFingerprintString(const std::string& commonName, std::string& fingerprintString) {
+    char fingerprint[16];
+    nabto_status_t st = nabtoGetFingerprint(commonName.c_str(), fingerprint);
+    if (st != NABTO_OK) {
+        return false;
+    }
+    char buf[3*sizeof(fingerprint)];
+    for (size_t i=0; i<sizeof(fingerprint)-1; i++) {
+        sprintf(buf+3*i, "%02x:", (unsigned char)(fingerprint[i]));
+    }
+    sprintf(buf+3*15, "%02x", (unsigned char)(fingerprint[15]));
+    fingerprintString = std::string(buf);
+    return true;
+
+}
 
 bool certCreate(const std::string& commonName, const std::string& password) {
     if ( password.compare("not-so-secret") == 0 ){
@@ -116,34 +131,32 @@ bool certCreate(const std::string& commonName, const std::string& password) {
         std::cout << "Failed to create self signed certificate " << st << std::endl;
         return false;
     }
-    char fingerprint[16];
-    st = nabtoGetFingerprint(commonName.c_str(), fingerprint);    
-    if (st != NABTO_OK) {
+    std::string fingerprint;
+    if (getFingerprintString(commonName, fingerprint)) {
+        std::cout << "Created self signed cert with fingerprint [" << fingerprint << "]" << std::endl;
+        return true;
+    } else {
         std::cout << "Failed to get fingerprint of self signed certificate " << st << std::endl;
         return false;
     }
-    char fingerprintString[3*sizeof(fingerprint)];
-    for (size_t i=0; i<sizeof(fingerprint)-1; i++) {
-        sprintf(fingerprintString+3*i, "%02x:", (unsigned char)(fingerprint[i]));
-    }
-    sprintf(fingerprintString+3*15, "%02x", (unsigned char)(fingerprint[15]));
-    std::cout << "Created self signed cert with fingerprint [" << fingerprintString << "]" << std::endl;
-    return true;
 }
 
 bool certList() {
     char** certificates;
     int certificatesLength;
     nabto_status_t status;
-    
+
     status = nabtoGetCertificates(&certificates, &certificatesLength);
     if (status != NABTO_OK) {
         fprintf(stderr, "nabtoGetCertificates failed: %d (%s)\n", (int) status, nabtoStatusStr(status));
         return false;
     }
-    
+
     for (int i = 0; i < certificatesLength; i++) {
-        std::cout << certificates[i] << std::endl;
+        std::string fingerprint;
+        if (getFingerprintString(certificates[i], fingerprint)) {
+            std::cout << fingerprint << " " << certificates[i] << std::endl;
+        }
     }
 
     for (int i = 0; i < certificatesLength; i++) {
@@ -176,7 +189,7 @@ bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
     return false;
 }
 
- 
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +198,7 @@ bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
 bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
     std::string content;
     bool ok = false;
-    
+
     std::ifstream ifs(file.c_str(), std::ifstream::in);
     if (ifs.good()) {
         content = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
@@ -396,7 +409,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
     if (!pskSetKeyIfPresent(session, options["tunnel-device"].as<std::string>(), options)) {
         die("Could not set PSK");
     }
-    
+
     tunnelManager_.reset(new TunnelManager(session));
 
     for (auto tunnelStr : options["tunnel"].as<std::vector<std::string> >()) {
@@ -448,7 +461,7 @@ bool streamReadFunc(nabto_handle_t session, cxxopts::Options& options) {
     if (status == NABTO_OK) {
         std::lock_guard<std::mutex> lock(iomutex_);
         std::cout << "nabtoStreamOpen() succeeded, stream = " << stream <<  std::endl;
-        
+
     } else {
         std::lock_guard<std::mutex> lock(iomutex_);
         std::cout << "nabtoStreamOpen() failed with status " << status << ": " << nabtoStatusStr(status) << std::endl;
@@ -466,7 +479,7 @@ bool streamReadFunc(nabto_handle_t session, cxxopts::Options& options) {
             break;
         }
     }
-    
+
     std::lock_guard<std::mutex> lock(iomutex_);
     if (status == NABTO_STREAM_CLOSED) {
         std::cout << "Stream " << stream << " closed cleanly" << std::endl;
@@ -500,12 +513,12 @@ bool showLocalDevices() {
     char** devices;
     int devicesLength;
     nabto_status_t status;
-    
+
     status = nabtoGetLocalDevices(&devices, &devicesLength);
     if (status != NABTO_OK) {
         return false;
     }
-    
+
     for(int i = 0; i < devicesLength; i++) {
         std::cout << devices[i] << std::endl;
     }
@@ -584,8 +597,8 @@ int main(int argc, char** argv) {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        // certs 
-        
+        // certs
+
         if(options.count("create-cert")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
@@ -596,7 +609,7 @@ int main(int argc, char** argv) {
                 die("Create cert failed");
             }
         }
-        
+
         if(options.count("certs")) {
             if (certList()) {
                 exit(0);
@@ -612,7 +625,7 @@ int main(int argc, char** argv) {
         if (options.count("local-connection-psk") && !options.count("local-connection-psk-id")) {
             die("missing local-connection-psk-id option");
         }
-        
+
         ////////////////////////////////////////////////////////////////////////////////
         // rpc
 
@@ -652,7 +665,7 @@ int main(int argc, char** argv) {
 
         ////////////////////////////////////////////////////////////////////////////////
         // tunnel
-        
+
         if (options.count("tunnel")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
@@ -670,7 +683,7 @@ int main(int argc, char** argv) {
 
         ////////////////////////////////////////////////////////////////////////////////
         // stream
-        
+
         if (options.count("stream-read")) {
             if (!options.count("cert-name")) {
                 die("Missing cert-name parameter");
@@ -688,7 +701,7 @@ int main(int argc, char** argv) {
 
 
         help(options);
-        
+
     }
     catch (const cxxopts::OptionException& e)
     {
