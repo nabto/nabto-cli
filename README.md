@@ -7,7 +7,7 @@
 [3]: https://ci.appveyor.com/api/projects/status/github/nabto/nabto-cli?svg=true&branch=master
 [4]: https://ci.appveyor.com/project/nabto/nabto-cli
 
-This application demonstrates how to use the Nabto Client SDK to exercise certificate management, device discovery, RPC device invocation and tunnel management.
+This application demonstrates how to use the Nabto Client SDK to exercise certificate management, device discovery, RPC device invocation and tunnel management. Precompiled binaries are available here: https://github.com/nabto/nabto-cli/releases
 
 ## SDK installation
 
