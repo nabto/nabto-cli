@@ -89,7 +89,7 @@ own projects which integrates the `nabto_client_api`.
 
 It is assumed that the fingerprint of an available certificate (see first example) is added to the ACL of the target device. See section 8 in [TEN036 "Security in Nabto Solutions"](https://www.nabto.com/downloads/docs/TEN036%20Security%20in%20Nabto%20Solutions.pdf) for further details.
 
-It is also assumed that a uNabto device is available. For the examples, `xj00cmgr.nw7xqz.appmyproduct.com` is used which should be replaced by your device ID. To get a device ID go to https://www.appmyproduct.com.
+It is also assumed that a uNabto device is available. For the examples, `xj00cmgr.nw7xqz.trial.nabto.net` is used which should be replaced by your device ID. To get a device ID go to https://console.cloud.nabto.com
 
 Further more, it is assumed for the tunnel examples that the device endpoint has been configured to allow access to the specified remote hosts and TCP ports. See section 4.4.1 in [TEN030 "Nabto Tunnels"](https://www.nabto.com/downloads/docs/TEN030%20Nabto%20Tunnels.pdf) for further details.
 
@@ -118,7 +118,7 @@ See https://github.com/nabto/ionic-starter-nabto#rpc-interface-configuration for
 
 Choose a device for pairing:
 [q]: Quit without pairing
-[0]: xj00cmgr.nw7xqz.appmyproduct.com
+[0]: xj00cmgr.nw7xqz.trial.nabto.net
 0
 {
    "request" : {
@@ -137,7 +137,7 @@ Choose a device for pairing:
 ```console
 $ ./nabto-cli --cert-name nabto-user --interface-def /path/to/unabto_queries.xml \
  --strict-interface-check --interface-id 317aadf2-3137-474b-8ddb-fea437c424f4 --interface-version 1.0 \
- --rpc-invoke-url nabto://xj00cmgr.nw7xqz.appmyproduct.com/get_public_device_info.json?
+ --rpc-invoke-url nabto://xj00cmgr.nw7xqz.trial.nabto.net/get_public_device_info.json?
 {
    "request" : {},
    "response" : {
@@ -169,7 +169,7 @@ The `<localPort>:<remoteHost>:<remotePort>` argument can be specified multiple t
 Per default a TCP tunnel connects to a TCP socket on localhost on the remote peer, the only mandatory parameters are the remote nabto device id, the remote TCP port, and the certificate name. For instance, the following retrieves a page from an HTTP server on the remote peer:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.trial.nabto.net \
   --tunnel ::80
 State has changed for tunnel 0x9f2ede35 status CONNECTING (0)
 State has changed for tunnel 0x9f2ede35 status REMOTE_P2P (4)
@@ -193,7 +193,7 @@ $ curl -s http://127.0.0.1:46785
 Set the local TCP tunnel client end point to listen on port 12345:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.trial.nabto.net \
   --tunnel 12345::80
 State has changed for tunnel 0xbc496535 status CONNECTING (0)
 State has changed for tunnel 0xbc496535 status REMOTE_P2P (4)
@@ -212,7 +212,7 @@ $ curl -s http://127.0.0.1:12345
 Open a local TCP tunnel client end point on port 12345. The remote tunnel endpoint must connect to TCP port 80 on the host 192.168.1.123, reachable from the remote peer:
 
 ```console
-$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.appmyproduct.com \
+$ ./nabto-cli --cert-name nabto-user --tunnel-device xj00cmgr.nw7xqz.trial.nabto.net \
   --tunnel 12345:192.168.1.123:80
 State has changed for tunnel 0x961aa635 status CONNECTING (0)
 State has changed for tunnel 0x961aa635 status REMOTE_P2P (4)
