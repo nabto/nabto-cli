@@ -207,7 +207,7 @@ $ curl -s http://127.0.0.1:12345
 ```
 
 
-#### Open TCP tunnel to using a non-local remote TCP server
+#### Open TCP tunnel to a TCP server not running on the device
 
 Open a local TCP tunnel client end point on port 12345. The remote tunnel endpoint must connect to TCP port 80 on the host 192.168.1.123, reachable from the remote peer:
 
