@@ -1,3 +1,6 @@
+> **Warning**
+> Deprecation notice: This tool is for Nabto 4/Micro (uNabto). For new projects, the next generation Nabto 5/Edge should be used instead. Read about the differences [here](https://docs.nabto.com/developer/guides/concepts/overview/edge-vs-micro.html). Nabto 5/Edge also provides a tunnel commandline tool as the one described below: See the [tool github page](https://github.com/nabto/nabto-client-edge-tunnel) and the detailed [step-by-step intro](https://docs.nabto.com/developer/guides/concepts/tunnels/quickstart.html).
+
 # Nabto CLI Demo
 
 [![Build Status][1]][2] [![Windows Build Status][3]][4]
@@ -11,7 +14,7 @@ This application demonstrates how to use the Nabto Client SDK to exercise certif
 
 ## SDK installation
 
-To build the Nabto CLI Demo, first download the `Nabto SDK libs` bundle from https://www.nabto.com/downloads.html.
+To build the Nabto CLI Demo, first download the `Nabto SDK libs` bundle from the legacy Nabto 4/Micro download site: https://downloads.nabto.com.
 
 After download, install the libraries and header files into the `lib` and `include` directories, so you have the following structure:
 
