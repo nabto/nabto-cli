@@ -1,0 +1,43 @@
+name: CMake
+
+on:
+  push:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Fetch libs
+      run: curl https://downloads.nabto.com/assets/nabto-libs/4.4.0/nabto-libs.zip -o nabto-libs.zip
+
+    - name: Unpack libs
+      run: 7z x nabto-libs.zip
+
+    - name: copy dll
+      run: copy nabto-libs\win32-static\bin\*.dll lib\
+
+    - name: copy lib
+      run: copy nabto-libs\win32-static\lib\nabto_client_api.lib lib\
+
+    - name: copy header
+      run: copy nabto-libs\win32-static\include\nabto_client_api.h include\
+
+    - name: Configure CMake
+      run: cmake -DCMAKE_GENERATOR_TOOLSET=v141_xp -DCMAKE_INSTALL_PREFIX=install -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target INSTALL
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: install\nabto-cli -v
+
+    - name: package
+      working-directory: ${{github.workspace}}/build
+      run:  cmake --build . --config Release --target package
