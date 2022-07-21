@@ -29,15 +29,13 @@ jobs:
       run: copy nabto-libs\win32-static\include\nabto_client_api.h include\
 
     - name: Configure CMake
-      run: cmake -DCMAKE_GENERATOR_TOOLSET=v141_xp -A Win32 -DCMAKE_INSTALL_PREFIX=install -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -DCMAKE_GENERATOR_TOOLSET=v141_xp -A Win32 -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target INSTALL
 
     - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: install\nabto-cli -v
+      run: .\install\nabto-cli -v
 
     - name: package
-      working-directory: ${{github.workspace}}/build
-      run:  cmake --build . --config Release --target package
+      run:  cmake --build ${{github.workspace}}/build --config Release --target package
