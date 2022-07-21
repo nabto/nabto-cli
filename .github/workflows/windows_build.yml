@@ -46,3 +46,9 @@ jobs:
         name: nabto-cli-windows
         path: |
           .\build\nabto-cli-windows.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: .\build\nabto-cli-windows.zip
