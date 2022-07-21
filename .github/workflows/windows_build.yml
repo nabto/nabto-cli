@@ -41,8 +41,8 @@ jobs:
       run:  cmake --build ${{github.workspace}}/build --config Release --target package
 
     - name: Archive package
-        uses: actions/upload-artifact@v3
-        with:
-          name: nabto-cli-windows
-          path: |
-            .\build\nabto-cli-windows.zip
+      uses: actions/upload-artifact@v3
+      with:
+        name: nabto-cli-windows
+        path: |
+          .\build\nabto-cli-windows.zip
