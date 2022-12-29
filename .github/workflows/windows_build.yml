@@ -8,6 +8,10 @@ env:
 
 jobs:
   build:
+    permissions:
+      # TODO split job in two, one which builds and tests the software and one which uploads the assets with write permissions.
+      # This is just a best practice and not a problem as we do not build untrusted code.
+      contents: write
     runs-on: windows-2019
 
     steps:
