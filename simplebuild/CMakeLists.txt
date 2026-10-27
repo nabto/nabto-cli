@@ -2,7 +2,7 @@
 ## linux. For a crossplatform build file with dynamic library magic
 ## see ../CMakeLists.txt
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 project(nabto-cli)
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
