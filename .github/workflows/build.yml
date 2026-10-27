@@ -1,0 +1,113 @@
+name: CMake
+
+on:
+  push:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    permissions:
+      # TODO split job in two, one which builds and tests the software and one which uploads the assets with write permissions.
+      # This is just a best practice and not a problem as we do not build untrusted code.
+      contents: write
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Fetch libs
+      run: curl -f https://downloads.nabto.com/assets/nabto-libs/v4.9.11/nabto_client_api-win32-static.zip -o nabto-libs.zip
+
+    - name: Unpack libs
+      run: 7z x nabto-libs.zip -onabto-libs
+
+    - name: copy dll
+      run: copy nabto-libs\bin\*.dll lib\
+
+    - name: copy lib
+      run: copy nabto-libs\lib\nabto_client_api.lib lib\
+
+    - name: copy header
+      run: copy nabto-libs\include\nabto_client_api.h include\
+
+    - name: Configure CMake
+      run: cmake -A Win32 -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target INSTALL
+
+    - name: Test
+      run: .\install\nabto-cli -v
+
+    - name: package
+      run:  cmake --build ${{github.workspace}}/build --config Release --target package
+
+    - name: Archive package
+      uses: actions/upload-artifact@v7
+      with:
+        name: nabto-cli-windows
+        path: |
+          .\build\nabto-cli-windows.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: .\build\nabto-cli-windows.zip
+
+  build-unix:
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            nabto_platform: linux64
+            nabto_lib: libnabto_client_api.so
+            package: nabto-cli-linux
+          - os: macos-15
+            nabto_platform: mac-arm64
+            nabto_lib: libnabto_client_api.dylib
+            package: nabto-cli-osx
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Fetch libs
+      run: curl -f https://downloads.nabto.com/assets/nabto-libs/v4.9.11/nabto_client_api-${{ matrix.nabto_platform }}.tar.gz -o nabto-libs.tar.gz
+
+    - name: Unpack libs
+      run: mkdir -p nabto-libs && tar xzf nabto-libs.tar.gz -C nabto-libs
+
+    - name: copy lib
+      run: cp nabto-libs/lib/${{ matrix.nabto_lib }} lib/
+
+    - name: copy header
+      run: cp nabto-libs/include/nabto_client_api.h include/
+
+    - name: Configure CMake
+      run: cmake -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
+
+    - name: Test
+      run: ./install/nabto-cli -v
+
+    - name: package
+      run: cmake --build ${{github.workspace}}/build --config Release --target package
+
+    - name: Archive package
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ matrix.package }}
+        path: ./build/${{ matrix.package }}.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ./build/${{ matrix.package }}.zip

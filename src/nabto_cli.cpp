@@ -42,7 +42,7 @@ void die(const std::string& msg, int status=1) {
     exit(status);
 }
 
-bool init(cxxopts::Options& options) {
+bool init(cxxopts::ParseResult& options) {
     nabto_status_t st;
     if (options.count("home-dir")) {
         st = nabtoStartup(options["home-dir"].as<std::string>().c_str());
@@ -88,7 +88,7 @@ bool pskParseHex(std::vector<char>& parsed, const std::string& text, int length)
     return parseHexString(parsed, text, offset);
 }
 
-bool pskSetKeyIfPresent(nabto_handle_t session, const std::string& host, cxxopts::Options& options) {
+bool pskSetKeyIfPresent(nabto_handle_t session, const std::string& host, cxxopts::ParseResult& options) {
     if (!(options.count("local-connection-psk-id") && options.count("local-connection-psk"))) {
         return true;
     }
@@ -166,7 +166,7 @@ bool certList() {
     return true;
 }
 
-bool certOpenSession(nabto_handle_t& session, cxxopts::Options& options) {
+bool certOpenSession(nabto_handle_t& session, cxxopts::ParseResult& options) {
     const std::string& cert = options["cert-name"].as<std::string>();
     const std::string& passwd = options["password"].as<std::string>();
     nabto_status_t status = nabtoOpenSession(&session, cert.c_str(), passwd.c_str());
@@ -220,7 +220,7 @@ bool rpcSetInterface(nabto_handle_t session, const std::string& file) {
     return status == NABTO_OK;
 }
 
-bool checkInterface(nabto_handle_t session, std::string device, cxxopts::Options& options) {
+bool checkInterface(nabto_handle_t session, std::string device, cxxopts::ParseResult& options) {
     if (!options.count("interface-id") || !options.count("interface-version")) {
         std::cout << "ERROR: strict-interface-check was given, but interface-id or interface-version was missing" << std::endl;
         return false;
@@ -289,7 +289,7 @@ bool extractHostFromUrl(const std::string& url, std::string& host) {
     }
 }
 
-bool rpcInvoke(cxxopts::Options& options) {
+bool rpcInvoke(cxxopts::ParseResult& options) {
     nabto_handle_t session;
     if (!certOpenSession(session, options)) {
         return false;
@@ -322,7 +322,7 @@ bool rpcInvoke(cxxopts::Options& options) {
     return status == NABTO_OK;
 }
 
-bool rpcPair(cxxopts::Options& options) {
+bool rpcPair(cxxopts::ParseResult& options) {
     char** devices;
     int devicesLength;
     nabto_status_t status;
@@ -399,7 +399,7 @@ bool rpcPair(cxxopts::Options& options) {
 ////////////////////////////////////////////////////////////////////////////////
 // tunnel
 
-bool tunnelRunFromString(cxxopts::Options& options) {
+bool tunnelRunFromString(cxxopts::ParseResult& options) {
     nabto_handle_t session;
 
     if (!certOpenSession(session, options)) {
@@ -447,7 +447,7 @@ bool tunnelRunFromString(cxxopts::Options& options) {
 
 std::mutex iomutex_;
 
-bool streamReadFunc(nabto_handle_t session, cxxopts::Options& options) {
+bool streamReadFunc(nabto_handle_t session, cxxopts::ParseResult& options) {
     nabto_stream_t stream;
     char* response;
     size_t actual = 0; /* actual size (in bytes) of response */
@@ -491,7 +491,7 @@ bool streamReadFunc(nabto_handle_t session, cxxopts::Options& options) {
 
 }
 
-bool streamRead(cxxopts::Options& options) {
+bool streamRead(cxxopts::ParseResult& options) {
     nabto_handle_t session;
     return streamReadFunc(session, options);
 #if 0
@@ -572,26 +572,26 @@ int main(int argc, char** argv) {
             ("v,version", "Show version")
             ("h,help", "Show help");
 
-        options.parse(argc, argv);
+        cxxopts::ParseResult result = options.parse(argc, argv);
 
-        if (!init(options)) {
+        if (!init(result)) {
             die("Initialization failed");
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         // show stuff
 
-        if (options.count("discover")) {
+        if (result.count("discover")) {
             showLocalDevices();
             exit(0);
         }
 
-        if (options.count("version")) {
+        if (result.count("version")) {
             showVersion();
             exit(0);
         }
 
-        if (options.count("help")) {
+        if (result.count("help")) {
             help(options);
             die("", 0);
         }
@@ -599,18 +599,18 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////////////
         // certs
 
-        if(options.count("create-cert")) {
-            if (!options.count("cert-name")) {
+        if(result.count("create-cert")) {
+            if (!result.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (certCreate(options["cert-name"].as<std::string>(), options["password"].as<std::string>())) {
+            if (certCreate(result["cert-name"].as<std::string>(), result["password"].as<std::string>())) {
                 exit(0);
             } else {
                 die("Create cert failed");
             }
         }
 
-        if(options.count("certs")) {
+        if(result.count("certs")) {
             if (certList()) {
                 exit(0);
             } else {
@@ -618,26 +618,26 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (options.count("local-connection-psk-id") && !options.count("local-connection-psk")) {
+        if (result.count("local-connection-psk-id") && !result.count("local-connection-psk")) {
             die("missing local-connection-psk option");
         }
 
-        if (options.count("local-connection-psk") && !options.count("local-connection-psk-id")) {
+        if (result.count("local-connection-psk") && !result.count("local-connection-psk-id")) {
             die("missing local-connection-psk-id option");
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         // rpc
 
-        if (options.count("rpc-invoke-url")) {
-            if (!options.count("interface-def")) {
+        if (result.count("rpc-invoke-url")) {
+            if (!result.count("interface-def")) {
                 die("Missing RPC interface definition");
             }
-            if (!options.count("cert-name")) {
+            if (!result.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (rpcInvoke(options)) {
-                if (!options.count("tunnel")) {
+            if (rpcInvoke(result)) {
+                if (!result.count("tunnel")) {
                     nabtoShutdown();
                     exit(0);
                 } else {
@@ -648,14 +648,14 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (options.count("pair")) {
-            if (!options.count("cert-name")) {
+        if (result.count("pair")) {
+            if (!result.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("interface-def")) {
+            if (!result.count("interface-def")) {
                 die("Missing RPC interface definition");
             }
-            if (rpcPair(options)) {
+            if (rpcPair(result)) {
                 nabtoShutdown();
                 exit(0);
             } else {
@@ -666,14 +666,14 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////////////
         // tunnel
 
-        if (options.count("tunnel")) {
-            if (!options.count("cert-name")) {
+        if (result.count("tunnel")) {
+            if (!result.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("tunnel-device")) {
+            if (!result.count("tunnel-device")) {
                 die("Missing tunnel-device parameter");
             }
-            if (tunnelRunFromString(options)) {
+            if (tunnelRunFromString(result)) {
                 nabtoShutdown();
                 exit(0);
             } else {
@@ -684,14 +684,14 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////////////
         // stream
 
-        if (options.count("stream-read")) {
-            if (!options.count("cert-name")) {
+        if (result.count("stream-read")) {
+            if (!result.count("cert-name")) {
                 die("Missing cert-name parameter");
             }
-            if (!options.count("tunnel-device")) {
+            if (!result.count("tunnel-device")) {
                 die("Missing tunnel-device parameter");
             }
-            if (streamRead(options)) {
+            if (streamRead(result)) {
                 nabtoShutdown();
                 exit(0);
             } else {
@@ -703,7 +703,7 @@ int main(int argc, char** argv) {
         help(options);
 
     }
-    catch (const cxxopts::OptionException& e)
+    catch (const cxxopts::exceptions::exception& e)
     {
         std::cout << "Error parsing options: " << e.what() << std::endl;
         exit(1);

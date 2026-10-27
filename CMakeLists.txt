@@ -4,7 +4,7 @@
 
 # For a simple build file which only targets linux see simplebuild/CMakeLists.txt
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 project (nabto-cli)
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,7 +27,13 @@ if(NOT NABTO_CORE_LIB)
   message(FATAL_ERROR "Nabto lib not found - please download and install as per the README file")
 endif()
 
-SET(CMAKE_INSTALL_RPATH "$ORIGIN")
+if (APPLE)
+  # The nabto dylib has the install name @rpath/libnabto_client_api.dylib, so
+  # look for it next to the executable when installed.
+  SET(CMAKE_INSTALL_RPATH "@loader_path")
+else()
+  SET(CMAKE_INSTALL_RPATH "$ORIGIN")
+endif()
 
 add_executable (nabto-cli src/nabto_cli.cpp src/tunnel_manager.cpp 3rdparty/jsoncpp.cpp)
 target_compile_features(nabto-cli PRIVATE cxx_range_for)
@@ -44,26 +50,11 @@ install(FILES ${NABTO_CORE_LIB_INSTALL} DESTINATION .)
 install(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION .)
 install (TARGETS nabto-cli DESTINATION .)
 
-# On apple the rpath trick does not work as intended, fix it given the idea from the following blog post
-# https://blogs.oracle.com/dipol/dynamic-libraries,-rpath,-and-mac-os
-if (APPLE)
-  # Default when only running make, the executable cannot find the libnabto_client_api.dylib this fixes it.
-  add_custom_command(
-    TARGET nabto-cli
-    POST_BUILD
-    COMMAND install_name_tool -change libnabto_client_api.dylib "${CMAKE_SOURCE_DIR}/lib/libnabto_client_api.dylib" $<TARGET_FILE:nabto-cli>)
-
-  # When installing the nabto-cli the libnabto_client_api.dylib is placed alongside the executable and the rpath needs to reflect that.
-  install(
-    CODE "execute_process(COMMAND install_name_tool -change \"${CMAKE_SOURCE_DIR}/lib/libnabto_client_api.dylib\" \"@loader_path/libnabto_client_api.dylib\" ${CMAKE_INSTALL_PREFIX}/nabto-cli)"
-)
-endif()
-
-# Here be dragons! Cpack does the wrong thing on osx, the executable added 
-# to the zip file does not include the correct executable where the correct
-# install_name_tool magic has been applied.
-
 string(TOLOWER ${CMAKE_SYSTEM_NAME} osname)
+if (APPLE)
+  # keep the release asset name used for earlier releases
+  set(osname "osx")
+endif()
 
 set(CPACK_GENERATOR "ZIP")
 
